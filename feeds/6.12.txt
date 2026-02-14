@@ -7,3 +7,4 @@ src-git istore https://github.com/linkease/istore.git
 src-git gecoosac https://github.com/openwrt-fork/openwrt-gecoosac.git
 src-git passwall https://github.com/xiaorouji/openwrt-passwall.git
 src-git openclash https://github.com/vernesong/OpenClash.git
+src-git luci-theme-proton2025 https://github.com/ChesterGoodiny/luci-theme-proton2025.git;main
