@@ -1,18 +1,33 @@
+# OpenWrt Feeds配置 - 使用国内镜像加速
+# 原始feeds源已替换为国内镜像，提升下载速度
 
+# 基础包源 - 清华大学镜像
+src-git packages https://mirrors.ustc.edu.cn/openwrt/packages.git;openwrt-24.10
 
+# LuCI界面源 - 清华大学镜像  
+src-git luci https://mirrors.ustc.edu.cn/openwrt/luci.git;openwrt-24.10
 
+# 路由相关包源 - 清华大学镜像
+src-git routing https://mirrors.ustc.edu.cn/openwrt/routing.git;openwrt-24.10
 
+# 电话相关包源 - 清华大学镜像
+src-git telephony https://mirrors.ustc.edu.cn/openwrt/telephony.git;openwrt-24.10
 
-# OpenWrt 官方 feeds（使用清华镜像）
-src-git packages https://mirrors.tuna.tsinghua.edu.cn/openwrt/openwrt.git;openwrt-24.10
-src-git luci https://mirrors.tuna.tsinghua.edu.cn/openwrt/luci.git;openwrt-24.10
-src-git routing https://mirrors.tuna.tsinghua.edu.cn/openwrt/routing.git;openwrt-24.10
-src-git telephony https://mirrors.tuna.tsinghua.edu.cn/openwrt/telephony.git;openwrt-24.10
-src-git targets https://mirrors.tuna.tsinghua.edu.cn/openwrt/targets.git;openwrt-24.10
+# 目标相关包源 - 清华大学镜像
+src-git targets https://mirrors.ustc.edu.cn/openwrt/targets.git;openwrt-24.10
 
-# 第三方 feeds
-src-git iStore https://github.com/linkease/istore.git;main
-src-git gecoos_ac https://github.com/Amadeusghost/GecoOS_AC.git;main
+# iStore软件中心源
+src-git istore https://github.com/linkease/istore.git
 
-# Proton2025 主题（重要！）
+# GecoOS AC无线控制器源
+src-git gecoosac https://github.com/openwrt-fork/openwrt-gecoosac.git
+
+# Proton2025 主题
 src-git luci-theme-proton2025 https://github.com/ChesterGoodiny/luci-theme-proton2025.git;main
+
+
+# 备用源配置（如果主镜像有问题）
+# src-git packages https://github.com/openwrt/packages.git;openwrt-24.10
+# src-git luci https://github.com/openwrt/luci.git;openwrt-24.10
+# src-git routing https://github.com/openwrt/routing.git;openwrt-24.10
+# src-git telephony https://github.com/openwrt/telephony.git;openwrt-24.10
