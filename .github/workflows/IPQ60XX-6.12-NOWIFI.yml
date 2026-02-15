@@ -176,6 +176,7 @@ jobs:
         run: |
           cd $OPENWRT_PATH
           echo -e "$(nproc) thread compile"
+
           make -j$(nproc) || make -j1 || make -j1 V=s
           echo "status=success" >> $GITHUB_OUTPUT
           echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
@@ -226,7 +227,6 @@ jobs:
             ### 📒 固件信息(无WIFI)
             - 无WIFI带有线NSS的6.12内核固件
             - 基于B大的自用固件 稳定性未知
-            - 处于测试版本
             - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
             - ⚽ 固件源码: ${{ env.REPO_URL }}
             - 💝 源码分支: ${{ env.REPO_BRANCH }}
@@ -238,10 +238,53 @@ jobs:
             - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
             - ${{ env.VERSION_INFO }}
 
+            ### 🎨 集成主题
+            - ✅ Proton2025 主题（深色玻璃设计）
+            - ✅ Argon 主题（经典王者）
+            - ✅ Aurora 主题（现代极简）
+            - ✅ KuCat 主题（功能丰富）
+            - ✅ Neobird 主题（移动优先）
+            - ✅ Bootstrap 主题（官方基础）
+
+            ### 🔧 集成插件
+            - ✅ OpenClash（唯一代理工具）
+            - ✅ iStore 软件中心
+            - ✅ GecoOS AC 无线控制器
+            - ✅ SmartDNS（DNS 优化）
+            - ✅ DDNSTO（远程管理）
+            - ✅ Docker 容器支持
+            - ✅ 5G 模块支持（QMI/SMS）
+            - ✅ WireGuard VPN
+            - ✅ 多WAN 支持
+            - ✅ 在线用户管理
+            - ✅ 定时自动重启
+
+            ### 🚀 核心功能
+            - ✅ NSS 硬件加速（IGS、MAPT、PPTP、SHAPER）
+            - ✅ Btrfs 文件系统支持
+            - ✅ UPnP 端口映射
+            - ✅ WOL 网络唤醒
+            - ✅ ARP 绑定
+            - ✅ USB 存储支持
+            - ✅ 系统监控（htop/ttyd）
+
+            ### 📦 已移除功能
+            - ❌ CUPS 打印服务器（减少编译负担）
+            - ❌ PassWall 代理工具（避免与 OpenClash 冲突）
+            - ❌ HomeProxy 代理工具（避免与 OpenClash 冲突）
+
+            ### 📝 使用方法
+            1. 下载对应的固件文件
+            2. 登录路由器管理界面
+            3. 进入 系统 → 备份与升级
+            4. 上传固件文件（取消勾选"保留配置"）
+            5. 等待升级完成
+
             ### ⚠️ 注意事项
             - 首次刷机时请勿保留配置
             - 建议使用 U-Boot 刷机
             - 刷机过程中请勿断电
+            - 本固件仅支持有线网络，不包含 WiFi 功能
 
             ---
             **Powered by GitHub Actions**
