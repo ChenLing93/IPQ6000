@@ -1,10 +1,18 @@
-src-git packages https://github.com/immortalwrt/packages.git
-src-git luci https://github.com/immortalwrt/luci.git
-src-git routing https://git.openwrt.org/feed/routing.git
-src-git telephony https://git.openwrt.org/feed/telephony.git
-src-git video https://github.com/openwrt/video.git
-src-git istore https://github.com/linkease/istore.git
-src-git gecoosac https://github.com/openwrt-fork/openwrt-gecoosac.git
-src-git passwall https://github.com/xiaorouji/openwrt-passwall.git
-src-git openclash https://github.com/vernesong/OpenClash.git
+
+
+
+
+
+# OpenWrt 官方 feeds（使用清华镜像）
+src-git packages https://mirrors.tuna.tsinghua.edu.cn/openwrt/openwrt.git;openwrt-24.10
+src-git luci https://mirrors.tuna.tsinghua.edu.cn/openwrt/luci.git;openwrt-24.10
+src-git routing https://mirrors.tuna.tsinghua.edu.cn/openwrt/routing.git;openwrt-24.10
+src-git telephony https://mirrors.tuna.tsinghua.edu.cn/openwrt/telephony.git;openwrt-24.10
+src-git targets https://mirrors.tuna.tsinghua.edu.cn/openwrt/targets.git;openwrt-24.10
+
+# 第三方 feeds
+src-git iStore https://github.com/linkease/istore.git;main
+src-git gecoos_ac https://github.com/Amadeusghost/GecoOS_AC.git;main
+
+# Proton2025 主题（重要！）
 src-git luci-theme-proton2025 https://github.com/ChesterGoodiny/luci-theme-proton2025.git;main
