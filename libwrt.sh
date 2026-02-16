@@ -1,8 +1,13 @@
 #!/bin/bash
 # libwrt.sh - LiBwrt OpenWrt DIY脚本（安全版本）
 
-# 定义工作目录
-cd openwrt || exit 1
+cd /path/to/IPQ6000
+
+git add libwrt.sh
+
+git commit -m "修复libwrt.sh脚本执行错误，移除错误的目录切换逻辑"
+
+git push origin main
 
 # 检测并移除 Athena LED 插件（feeds更新后可能在 package/feeds/ 目录）
 find package -type d -name "luci-app-athena-led" -exec rm -rf {} + 2>/dev/null
