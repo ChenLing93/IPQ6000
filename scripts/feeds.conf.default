@@ -1,0 +1,44 @@
+# ========================================================================
+# LiBwrt OpenWrt IPQ60XX Feeds配置
+# NSS专用固件编译源
+# ========================================================================
+
+# ----------------------------------------------------------------------------
+# NSS核心源（必须使用LiBwrt维护的分支）
+# ----------------------------------------------------------------------------
+src-git packages https://github.com/LiBwrt/openwrt-packages.git;main-nss
+src-git luci https://github.com/LiBwrt/openwrt-luci.git;main-nss
+src-git routing https://github.com/LiBwrt/openwrt-routing.git;main-nss
+
+# ----------------------------------------------------------------------------
+# 官方源（非NSS相关）
+# ----------------------------------------------------------------------------
+src-git telephony https://github.com/openwrt/telephony.git;openwrt-24.10
+
+# ----------------------------------------------------------------------------
+# iStore应用商店源（增强插件生态）
+# ----------------------------------------------------------------------------
+src-git istore https://github.com/linkease/istore.git;main
+src-git istore-ui https://github.com/linkease/istore-ui.git;main
+
+# ----------------------------------------------------------------------------
+# GecoOS AC游戏加速器源
+# ----------------------------------------------------------------------------
+src-git gecoos https://github.com/geco-os/openwrt-packages.git;main
+
+# ----------------------------------------------------------------------------
+# 主题相关源（美化界面）
+# ----------------------------------------------------------------------------
+src-git luci-theme-proton2025 https://github.com/kiddin9/luci-theme-proton2025.git;master
+src-git luci-theme-argon https://github.com/jerrykuku/luci-theme-argon.git;master
+src-git luci-theme-aurora https://github.com/xiaoqingfengATGH/luci-theme-aurora.git;master
+src-git luci-theme-kucat https://github.com/linkease/nas-packages-luci.git;main
+src-git luci-theme-neobird https://github.com/thinktip/luci-theme-neobird.git;master
+
+# ----------------------------------------------------------------------------
+# 说明：
+# 1. NSS源必须使用 main-nss 分支，否则NSS功能不完整
+# 2. 主题源可以自定义选择，不需要的主题可以注释掉
+# 3. feeds更新顺序：先update，再install
+# 4. 如需添加其他插件源，请遵循相同格式
+# ----------------------------------------------------------------------------
