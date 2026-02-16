@@ -24,7 +24,7 @@ src-git istore-ui https://github.com/linkease/istore-ui.git;main
 # ----------------------------------------------------------------------------
 # GecoOS AC游戏加速器源
 # ----------------------------------------------------------------------------
-src-git gecoos https://github.com/geco-os/openwrt-packages.git;main
+#src-git gecoos https://github.com/geco-os/openwrt-packages.git;main
 
 # ----------------------------------------------------------------------------
 # 主题相关源（美化界面）
