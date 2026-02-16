@@ -1,50 +1,18 @@
-# 基础包源
-src-git packages https://mirrors.ustc.edu.cn/openwrt/packages.git;openwrt-24.10
+src-git packages https://github.com/LiBwrt/openwrt-packages.git;main-nss
+src-git luci https://github.com/LiBwrt/openwrt-luci.git;main-nss
+src-git routing https://github.com/LiBwrt/openwrt-routing.git;main-nss
+src-git telephony https://github.com/openwrt/telephony.git;openwrt-24.10
 
-# LuCI界面源
-src-git luci https://mirrors.ustc.edu.cn/openwrt/luci.git;openwrt-24.10
+# iStore 源
+src-git istore https://github.com/linkease/istore.git;main
+src-git istore-ui https://github.com/linkease/istore-ui.git;main
 
-# 路由相关包源
-src-git routing https://mirrors.ustc.edu.cn/openwrt/routing.git;openwrt-24.10
+# GecoOS AC 源
+src-git gecoos https://github.com/geco-os/openwrt-packages.git;main
 
-# 电话相关包源
-src-git telephony https://mirrors.ustc.edu.cn/openwrt/telephony.git;openwrt-24.10
-
-# 目标相关包源
-src-git targets https://mirrors.ustc.edu.cn/openwrt/targets.git;openwrt-24.10
-
-# ==================== 第三方功能源（关键修复）====================
-# iStore 软件中心源（Linkease 团队）
-src-git istore https://github.com/linkease/istore.git
-
-# 易有云团队插件源（包含 iStore、DDNSTO、易有云文件管理等）
-src-git linkease-nas-packages https://github.com/linkease/nas-packages-luci.git
-
-# GecoOS AC 无线控制器
-src-git gecoosac https://github.com/openwrt-fork/openwrt-gecoosac.git
-
-# ==================== 主题源 ====================
-# Proton2025 主题
-src-git luci-theme-proton2025 https://github.com/ChesterGoodiny/luci-theme-proton2025.git
-
-# Argon 主题
-src-git luci-theme-argon https://github.com/jerrykuku/luci-theme-argon.git
-
-# Aurora 主题
-src-git luci-theme-aurora https://github.com/eamonxg/luci-theme-aurora.git
-
-# KuCat 酷猫主题
-src-git luci-theme-kucat https://github.com/sirpdboy/luci-theme-kucat.git
-
-# Neobird 主题
-src-git luci-theme-neobird https://github.com/gngpp/luci-theme-neobird.git
-
-# ==================== 主题配置工具 ====================
-# Argon 主题配置工具
-src-git luci-app-argon-config https://github.com/jerrykuku/luci-app-argon-config.git
-
-# KuCat 主题配置工具
-src-git luci-app-kucat-config https://github.com/sirpdboy/luci-app-kucat-config.git
-
-# Aurora 主题配置工具
-src-git luci-app-aurora-config https://github.com/eamonxg/luci-app-aurora-config.git
+# 主题相关源
+src-git luci-theme-proton2025 https://github.com/kiddin9/luci-theme-proton2025.git;master
+src-git luci-theme-argon https://github.com/jerrykuku/luci-theme-argon.git;master
+src-git luci-theme-aurora https://github.com/xiaoqingfengATGH/luci-theme-aurora.git;master
+src-git luci-theme-kucat https://github.com/linkease/nas-packages-luci.git;main
+src-git luci-theme-neobird https://github.com/thinktip/luci-theme-neobird.git;master
