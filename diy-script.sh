@@ -137,6 +137,7 @@ echo "  添加 msd_lite..."
 git clone --depth=1 https://github.com/ximiTech/luci-app-msd_lite package/luci-app-msd_lite
 git clone --depth=1 https://github.com/ximiTech/msd_lite package/msd_lite
 
+git clone --depth=1 https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac
 echo "  添加 MosDNS..."
 git clone --depth=1 https://github.com/sbwml/luci-app-mosdns package/luci-app-mosdns
 
@@ -156,6 +157,8 @@ git_sparse_clone master https://github.com/linkease/nas-packages network/service
 echo "步骤 9: 添加 iStore..."
 git_sparse_clone main https://github.com/linkease/istore-ui app-store-ui
 git_sparse_clone main https://github.com/linkease/istore luci
+
+
 
 # ============================================
 # 步骤 10: 添加在线用户
