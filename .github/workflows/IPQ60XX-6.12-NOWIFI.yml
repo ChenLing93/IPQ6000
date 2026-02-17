@@ -9,7 +9,7 @@ env:
   REPO_URL: https://github.com/LiBwrt/openwrt-6.x.git
   REPO_BRANCH: main-nss
   CONFIG_FILE: configs/ipq60xx-6.12-nowifi.config
-  DIY_SCRIPT: diy-script.sh
+  DIY_SCRIPT: libwrt.sh
   CLASH_KERNEL: amd64
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
@@ -72,9 +72,9 @@ jobs:
 
     - name: Generate Variables(生成变量)
       run: |
-        cp $CONFIG_FILE $OPENWRT_PATH/.config
+        [ -e $CONFIG_FILE ] && cp $CONFIG_FILE $OPENWRT_PATH/.config
         cd $OPENWRT_PATH
-        make defconfig > /dev/null 2>&1
+        [ -f .config ] && make defconfig > /dev/null 2>&1
         SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
         DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
@@ -89,20 +89,20 @@ jobs:
         ccache: false
         mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
         prefix: ${{ env.OPENWRT_PATH }}
-    
+
+    - name: Load Custom Configuration(加载自定义配置)
+      run: |
+        [ -e files ] && mv files $OPENWRT_PATH/files
+        [ -e $CONFIG_FILE ] && cp $CONFIG_FILE $OPENWRT_PATH/.config
+        chmod +x $DIY_SCRIPT
+        cd $OPENWRT_PATH
+        $GITHUB_WORKSPACE/$DIY_SCRIPT
+
     - name: Install Feeds(安装feeds)
       run: |
         cd $OPENWRT_PATH
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-  
-    - name: Load Custom Configuration(加载自定义配置)
-      run: |
-        [ -e files ] && mv files $OPENWRT_PATH/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
-        chmod +x $DIY_SCRIPT
-        cd $OPENWRT_PATH
-        $GITHUB_WORKSPACE/$DIY_SCRIPT
 
     - name: Download DL Package(下载DL软件包)
       run: |
@@ -136,22 +136,24 @@ jobs:
     - name: Organize Files(整理文件)
       if: steps.compile.outputs.status == 'success'
       run: |
-            cd $OPENWRT_PATH/bin/targets/*/*
-            cat sha256sums
-            echo "VERSION_KERNEL=$(find -type f -name "*.manifest" -exec grep -oP '^kernel - \K.*?(?=~|-\d+-)' {} \;)" >> $GITHUB_ENV
-            cp $OPENWRT_PATH/.config build.config
-            mkdir -p packages
-            [ -d "$OPENWRT_PATH/bin/packages" ] && mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages 2>/dev/null || true
-            [ -d "$OPENWRT_PATH/bin/packages" ] && mv -f $OPENWRT_PATH/bin/packages/*/*.ipk packages 2>/dev/null || true
-            [ -d "$OPENWRT_PATH/bin/packages" ] && mv -f $OPENWRT_PATH/bin/packages/*.ipk packages 2>/dev/null || true
-            if [ "$(ls -A packages 2>/dev/null)" ]; then
-            tar -zcf Packages.tar.gz packages
-            rm -rf packages
-            else
-            rm -rf packages
-            fi
-            rm -rf feeds.buildinfo version.buildinfo
-            echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+        cd $OPENWRT_PATH/bin/targets/*/*
+        cat sha256sums
+        echo "VERSION_KERNEL=$(find -type f -name "*.manifest" -exec grep -oP '^kernel - \K.*?(?=~|-\d+-)' {} \;)" >> $GITHUB_ENV
+        cp $OPENWRT_PATH/.config build.config
+        # 尝试移动ipk文件，如果不存在则跳过
+        mkdir -p packages
+        [ -d "$OPENWRT_PATH/bin/packages" ] && mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages 2>/dev/null || true
+        [ -d "$OPENWRT_PATH/bin/packages" ] && mv -f $OPENWRT_PATH/bin/packages/*/*.ipk packages 2>/dev/null || true
+        [ -d "$OPENWRT_PATH/bin/packages" ] && mv -f $OPENWRT_PATH/bin/packages/*.ipk packages 2>/dev/null || true
+        # 如果packages目录为空，则不打包
+        if [ "$(ls -A packages 2>/dev/null)" ]; then
+          tar -zcf Packages.tar.gz packages
+          rm -rf packages
+        else
+          rm -rf packages
+        fi
+        rm -rf feeds.buildinfo version.buildinfo
+        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
     - name: Upload Firmware To Artifact(将固件上传到Artifact)
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
@@ -176,7 +178,7 @@ jobs:
           - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
           - ⚽ 固件源码: ${{ env.REPO_URL }}
           - 💝 源码分支: ${{ env.REPO_BRANCH }}
-          - 🌐 默认地址: 192.168.1.1
+          - 🌐 默认地址: 192.168.5.1
           - 🔑 默认密码: password
           ### 🧊 固件版本
           - 固件内核版本：${{ env.VERSION_KERNEL }}
