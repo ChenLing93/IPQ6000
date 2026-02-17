@@ -143,7 +143,7 @@ git clone --depth=1 https://github.com/sbwml/luci-app-mosdns package/luci-app-mo
 echo "  添加 Alist..."
 git clone --depth=1 https://github.com/sbwml/luci-app-alist package/luci-app-alist
 
-# ============================================
+git clone --depth=1  https://github.com/kiddin9/luci-theme-proton2025  package/luci-theme-proton2025
 # 步骤 8: 添加 DDNS.to
 # ============================================
 echo "步骤 8: 添加 DDNS.to..."
@@ -159,6 +159,8 @@ git_sparse_clone main https://github.com/linkease/istore luci
 
 # ============================================
 # 步骤 10: 添加在线用户
+
+
 # ============================================
 echo "步骤 10: 添加在线用户..."
 git_sparse_clone main https://github.com/haiibo/packages luci-app-onliner
