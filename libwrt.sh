@@ -23,5 +23,4 @@ if [ -f "package/luci-app-athena-led/root/usr/sbin/athena-led" ]; then
     chmod +x package/luci-app-athena-led/root/usr/sbin/athena-led
 fi
 
-echo "DIY脚本执行完成"
-EOF
+
