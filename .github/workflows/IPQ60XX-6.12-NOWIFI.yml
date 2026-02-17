@@ -136,14 +136,22 @@ jobs:
     - name: Organize Files(整理文件)
       if: steps.compile.outputs.status == 'success'
       run: |
-        cd $OPENWRT_PATH/bin/targets/*/*
-        cat sha256sums
-        echo "VERSION_KERNEL=$(find -type f -name "*.manifest" -exec grep -oP '^kernel - \K.*?(?=~|-\d+-)' {} \;)" >> $GITHUB_ENV
-        cp $OPENWRT_PATH/.config build.config
-        mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
-        tar -zcf Packages.tar.gz packages
-        rm -rf packages feeds.buildinfo version.buildinfo
-        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+            cd $OPENWRT_PATH/bin/targets/*/*
+            cat sha256sums
+            echo "VERSION_KERNEL=$(find -type f -name "*.manifest" -exec grep -oP '^kernel - \K.*?(?=~|-\d+-)' {} \;)" >> $GITHUB_ENV
+            cp $OPENWRT_PATH/.config build.config
+            mkdir -p packages
+            [ -d "$OPENWRT_PATH/bin/packages" ] && mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages 2>/dev/null || true
+            [ -d "$OPENWRT_PATH/bin/packages" ] && mv -f $OPENWRT_PATH/bin/packages/*/*.ipk packages 2>/dev/null || true
+            [ -d "$OPENWRT_PATH/bin/packages" ] && mv -f $OPENWRT_PATH/bin/packages/*.ipk packages 2>/dev/null || true
+            if [ "$(ls -A packages 2>/dev/null)" ]; then
+            tar -zcf Packages.tar.gz packages
+            rm -rf packages
+            else
+            rm -rf packages
+            fi
+            rm -rf feeds.buildinfo version.buildinfo
+            echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
     - name: Upload Firmware To Artifact(将固件上传到Artifact)
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
