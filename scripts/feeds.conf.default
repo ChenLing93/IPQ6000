@@ -18,8 +18,9 @@ src-git telephony https://github.com/openwrt/telephony.git;openwrt-24.10
 # ----------------------------------------------------------------------------
 # iStore应用商店源（增强插件生态）
 # ----------------------------------------------------------------------------
-src-git istore https://github.com/linkease/istore.git;main
-src-git istore-ui https://github.com/linkease/istore-ui.git;main
+src-git istore https://github.com/linkease/istore;main' >> feeds.conf.default
+./scripts/feeds update istore
+./scripts/feeds install -d y -p istore luci-app-store
 
 # ----------------------------------------------------------------------------
 # GecoOS AC游戏加速器源
