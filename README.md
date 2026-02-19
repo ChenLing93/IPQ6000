@@ -9,7 +9,7 @@
 - **本固件稳定性未知，商用环境请不要使用！**
 
 ## 项目说明 [![](https://img.shields.io/badge/-项目基本介绍-FFFFFF.svg)](#项目说明-)
-- 固件默认管理地址：`192.168.5.1` 默认用户：`root` 默认密码：`password或者无`
+- 固件默认管理地址：`192.168.5.1` 默认用户：`root` 默认密码：`password`
 - 源码：[LiBwrt](https://github.com/LiBwrt-op/openwrt-6.x)
 - 源码：[immortalwrt](https://github.com/immortalwrt/immortalwrt)
 - 云编译来源：https://github.com/haiibo/OpenWrt
