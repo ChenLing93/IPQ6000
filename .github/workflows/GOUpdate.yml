@@ -1,0 +1,24 @@
+name: goupdate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 3 * * *
+
+jobs:
+  Cleaning:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Delete Old Workflows
+      uses: Mattraks/delete-workflow-runs@main
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        retain_days: 2
+        keep_minimum_runs: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25.5'
+        cache: true
