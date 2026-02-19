@@ -3,17 +3,3 @@ src-git luci https://github.com/immortalwrt/luci.git
 src-git routing https://git.openwrt.org/feed/routing.git
 src-git telephony https://git.openwrt.org/feed/telephony.git
 src-git video https://github.com/openwrt/video.git
-
-# iStore 源
-src-git istore https://github.com/linkease/istore.git;main
-src-git istore-ui https://github.com/linkease/istore-ui.git;main
-
-# GecoOS AC 源
-src-git gecoos https://github.com/geco-os/openwrt-packages.git;main
-
-# 主题相关源
-src-git luci-theme-proton2025 https://github.com/ChesterGoodiny/luci-theme-proton2025.git;master
-src-git luci-theme-argon https://github.com/jerrykuku/luci-theme-argon.git;master
-src-git luci-theme-aurora https://github.com/xiaoqingfengATGH/luci-theme-aurora.git;master
-src-git luci-theme-kucat https://github.com/linkease/nas-packages-luci.git;main
-src-git luci-theme-neobird https://github.com/thinktip/luci-theme-neobird.git;master
