@@ -1,11 +1,7 @@
-
 #!/bin/bash
 
 # 修改默认IP
-# sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
-
-#补足依赖
-#sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+ sed -i 's/192.168.5.1/10.0.0.1/g' package/base-files/files/bin/config_generate
 
 #安装和更新软件包
 UPDATE_PACKAGE() {
@@ -54,10 +50,11 @@ UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main"
 #UPDATE_PACKAGE "luci-app-homeproxy" "immortalwrt/homeproxy" "master"
 UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
+UPDATE_PACKAGE "istore" "linkease/istore" "main"
 
 #small-package
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
-        naiveproxy v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
+        naiveproxy shadowsocks-rust v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
         tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
         luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
         taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
@@ -72,9 +69,9 @@ UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main
 UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "master"
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
 
-#UPDATE_PACKAGE "openwrt-podman" "https://github.com/breeze303/openwrt-podman" "main"
+UPDATE_PACKAGE "openwrt-podman" "https://github.com/breeze303/openwrt-podman" "main"
 UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main"
-#sed -i 's|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-$(ARCH_PACKAGES) $(1)/usr/bin/quickfile|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-aarch64_generic $(1)/usr/bin/quickfile|' package/luci-app-quickfile/quickfile/Makefile
+sed -i 's|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-$(ARCH_PACKAGES) $(1)/usr/bin/quickfile|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-aarch64_generic $(1)/usr/bin/quickfile|' package/luci-app-quickfile/quickfile/Makefile
 
 rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname luci-app-diskman -prune)
 rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname parted -prune)
@@ -85,30 +82,19 @@ sed -i '/ntfs-3g-utils /d' package/luci-app-diskman/Makefile
 mkdir -p package/parted && \
 wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O package/parted/Makefile
 
-UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master"
-
-# 只保留指定的 qualcommax_ipq60xx 设备
-if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
-    # 有 EMMC 时，只保留：redmi_ax5-jdcloud / jdcloud_re-ss-01 / jdcloud_re-cs-07
-    keep_pattern="\(redmi_ax5-jdcloud\|jdcloud_re-ss-01\|jdcloud_re-cs-07\)=y$"
-else
-    # 普通情况，只保留这几个
-    keep_pattern="\(redmi_ax5\|qihoo_360v6\|redmi_ax5-jdcloud\|zn_m2\|jdcloud_re-ss-01\|jdcloud_re-cs-07\)=y$"
-fi
-
-sed -i "/^CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_/{
-    /$keep_pattern/!d
-}" ./.config
+UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "main"
 
 keywords_to_delete=(
-    #"xiaomi_ax3600" "xiaomi_ax9000" "xiaomi_ax1800" "glinet" "jdcloud_ax6600" "mr7350" 
-    "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn" "CONFIG_TARGET_INITRAMFS" "ddns" "LSUSB" "mihomo"
+    "xiaomi_ax3600" "xiaomi_ax9000" "xiaomi_ax1800" "glinet" "jdcloud_ax6600"
+    "mr7350" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn" "CONFIG_TARGET_INITRAMFS" "ddns" "LSUSB" "mihomo"
     "smartdns" "kucat" "bootstrap"
 )
 
 
 [[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("usb" "wpad" "hostapd")
+#[[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "jdcloud_ax1800-pro" "redmi_ax5-jdcloud")
 [[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "disk")
+[[ $FIRMWARE_TAG == *"EMMC"* ]] && keywords_to_delete+=("cmiot_ax18" "qihoo_v6" "redmi_ax5=y" "zn_m2")
 
 for keyword in "${keywords_to_delete[@]}"; do
     sed -i "/$keyword/d" ./.config
@@ -128,8 +114,8 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-ttyd=y"
     "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
     "CONFIG_PACKAGE_ttyd=y"
-    "CONFIG_PACKAGE_luci-app-homeproxy=y"
-    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-homeproxy=n"
+    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=n"
     "CONFIG_PACKAGE_luci-app-ddns-go=y"
     "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-argon-config=y"
@@ -151,10 +137,8 @@ provided_config_lines=(
     #"CONFIG_PACKAGE_luci-app-msd_lite=y"
     #"CONFIG_PACKAGE_luci-app-lucky=y"
     "CONFIG_PACKAGE_luci-app-gecoosac=y"
+	"CONFIG_PACKAGE_luci-app-store=y"
     #"CONFIG_PACKAGE_luci-app-openvpn-client=y"
-	"CONFIG_PACKAGE_luci-app-wireguard=y"
-    "CONFIG_PACKAGE_wireguard-tools=y"
-	"CONFIG_PACKAGE_kmod-wireguard=y"
 )
 
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
@@ -165,26 +149,14 @@ if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
         "CONFIG_PACKAGE_wpad-openssl=n"
     )
 
-    echo "[NOWIFI] preparing nowifi dtsi files..."
-
-    for dtsi in ipq6018-nowifi.dtsi ipq8074-nowifi.dtsi; do
-        if [[ -f "${GITHUB_WORKSPACE}/scripts/$dtsi" ]]; then
-            if [[ ! -f "$DTS_PATH/$dtsi" ]]; then
-                cp "${GITHUB_WORKSPACE}/scripts/$dtsi" "$DTS_PATH/"
-                echo "[NOWIFI] copied $dtsi to $DTS_PATH"
-            else
-                echo "[NOWIFI] $dtsi already exists in $DTS_PATH"
-            fi
-        else
-            echo "[NOWIFI][ERROR] scripts/$dtsi not found!"
-            exit 1
-        fi
-    done
-
+    #find $DTS_PATH -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\)\.dtsi/ipq\1-nowifi.dtsi/
+    #find "$DTS_PATH" -type f \( -name "ipq6018-256m.dtsi" -o -name "ipq8074-512m.dtsi" \) -exec sed -i \
+    #    -e 's/reg = <0x0 0x4ab00000 0x0 0x02800000>;/reg = <0x0 0x4ab00000 0x0 0x1000000>;/' \
+    #    -e 's/reg = <0x0 0x4b000000 0x0 0x3700000>;/reg = <0x0 0x4b000000 0x0 0x1000000>;/' {} +
+    #find $DTS_PATH -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\).dtsi/ipq\1-nowifi.dtsi/g' {} +
     find "$DTS_PATH" -type f ! -iname '*nowifi*' -exec sed -i \
       -e '/#include "ipq6018.dtsi"/a #include "ipq6018-nowifi.dtsi"' \
       -e '/#include "ipq8074.dtsi"/a #include "ipq8074-nowifi.dtsi"' {} +
-
     echo "qualcommax set up nowifi successfully!"
 
 else
@@ -222,12 +194,12 @@ rm package/kernel/mac80211/patches/nss/subsys/{999-775-wifi-mac80211-Changes-for
 [[ $FIRMWARE_TAG == *"EMMC"* ]] && provided_config_lines+=(
     #"CONFIG_PACKAGE_luci-app-diskman=y"
     #"CONFIG_PACKAGE_luci-i18n-diskman-zh-cn=y"
-    "CONFIG_PACKAGE_luci-app-docker=m"
-    "CONFIG_PACKAGE_luci-i18n-docker-zh-cn=m"
-    "CONFIG_PACKAGE_luci-app-dockerman=m"
-    "CONFIG_PACKAGE_luci-i18n-dockerman-zh-cn=m"
-    #"CONFIG_PACKAGE_luci-app-podman=y"
-    #"CONFIG_PACKAGE_podman=y"
+    #"CONFIG_PACKAGE_luci-app-docker=m"
+    #"CONFIG_PACKAGE_luci-i18n-docker-zh-cn=m"
+    #"CONFIG_PACKAGE_luci-app-dockerman=m"
+    #"CONFIG_PACKAGE_luci-i18n-dockerman-zh-cn=m"
+    "CONFIG_PACKAGE_luci-app-podman=y"
+    "CONFIG_PACKAGE_podman=y"
     "CONFIG_PACKAGE_luci-app-openlist2=y"
     "CONFIG_PACKAGE_luci-i18n-openlist2-zh-cn=y"
     #"CONFIG_PACKAGE_fdisk=y"
@@ -241,6 +213,7 @@ rm package/kernel/mac80211/patches/nss/subsys/{999-775-wifi-mac80211-Changes-for
     "CONFIG_PACKAGE_luci-app-passwall=y"
     "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=n"
     "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client=n"
     "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client=n"
     "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs=n"
     "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=n"
@@ -276,7 +249,7 @@ rm package/kernel/mac80211/patches/nss/subsys/{999-775-wifi-mac80211-Changes-for
     #"CONFIG_PACKAGE_luci-app-passwall2=y"
     "CONFIG_PACKAGE_luci-app-samba4=y"
     "CONFIG_PACKAGE_luci-app-openclash=y"
-    #"CONFIG_PACKAGE_luci-app-quickfile=y"
+    "CONFIG_PACKAGE_luci-app-quickfile=y"
     #"CONFIG_PACKAGE_quickfile=y"
 )
 
@@ -320,83 +293,15 @@ sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" "package/emortal/defa
 #解决 dropbear 配置的 bug
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
 
-#if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
-#    #解决 nginx 的问题
-#    install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_nginx_setup.sh" "package/base-files/files/etc/uci-defaults/99_nginx_setup"
-#fi
-
-if ! grep -q "CMAKE_POLICY_VERSION_MINIMUM" include/cmake.mk; then
-  echo 'CMAKE_OPTIONS += -DCMAKE_POLICY_VERSION_MINIMUM=3.5' >> include/cmake.mk
+if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
+    #解决 nginx 的问题
+    install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_nginx_setup.sh" "package/base-files/files/etc/uci-defaults/99_nginx_setup"
 fi
 
-
-#修复 rust 编译
-RUST_FILE=$(find ./feeds/packages/ -maxdepth 3 -type f -wholename "*/rust/Makefile")
-if [ -f "$RUST_FILE" ]; then
-	echo " "
-
-	sed -i 's/ci-llvm=true/ci-llvm=false/g' $RUST_FILE
-	patch $RUST_FILE ${GITHUB_WORKSPACE}/scripts/rust-makefile.patch
-
-	echo "rust has been fixed!"
+#update golang
+GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
+GOLANG_BRANCH="24.x"
+if [[ -d ./feeds/packages/lang/golang ]]; then
+	\rm -rf ./feeds/packages/lang/golang
+	git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
 fi
-
-patch_openwrt_go() {
-    # 1. 确定 Makefile 路径 (通常在 feeds/packages/lang/golang/golang/Makefile)
-    # 使用 find 增加容错，防止目录结构略有不同
-    local GO_MAKEFILE
-    GO_MAKEFILE=$(find feeds -name "Makefile" | grep "lang/golang/golang/Makefile" | head -n 1)
-
-    if [ -z "$GO_MAKEFILE" ]; then
-        echo "❌ Error: Could not find OpenWrt Go Makefile!"
-        return 1
-    fi
-    echo "found go makefile: $GO_MAKEFILE"
-
-    # 2. 获取 Go 最新版本号 (例如 1.25.6)
-    local LATEST_VER
-    LATEST_VER="$(curl -s "https://go.dev/VERSION?m=text" | head -n 1 | tr -d '[:space:]' | sed 's/^go//')"
-    
-    if [ -z "$LATEST_VER" ]; then
-        echo "❌ Error: Failed to fetch latest Go version."
-        return 1
-    fi
-
-    # 3. 检查当前 Makefile 里的版本
-    local CUR_VER
-    CUR_VER=$(grep "^PKG_VERSION:=" "$GO_MAKEFILE" | cut -d= -f2)
-    echo "Current OpenWrt Go version: $CUR_VER"
-    echo "Target Latest Go version:   $LATEST_VER"
-
-    if [ "$CUR_VER" == "$LATEST_VER" ]; then
-        echo "✅ Version is already up to date."
-        return 0
-    fi
-
-    # 4. 计算源码包的 SHA256 Hash (这是最关键的一步，不改 Hash 会导致下载校验失败)
-    # 注意：OpenWrt 编译 Go 用的是 src 包，不是 linux-amd64 包！
-    echo "☁️  Downloading source info to calculate hash..."
-    local SRC_URL="https://go.dev/dl/go${LATEST_VER}.src.tar.gz"
-    local NEW_HASH
-    NEW_HASH=$(curl -sL "$SRC_URL" | sha256sum | awk '{print $1}')
-
-    if [ -z "$NEW_HASH" ] || [ ${#NEW_HASH} -ne 64 ]; then
-        echo "❌ Error: Failed to calculate SHA256 hash."
-        return 1
-    fi
-    echo "New Hash: $NEW_HASH"
-
-    # 5. 使用 sed 修改 Makefile
-    echo "🔧 Patching Makefile..."
-    sed -i "s/^PKG_VERSION:=.*/PKG_VERSION:=$LATEST_VER/" "$GO_MAKEFILE"
-    sed -i "s/^PKG_HASH:=.*/PKG_HASH:=$NEW_HASH/" "$GO_MAKEFILE"
-
-    # 6. 验证修改
-    echo "--------------------------------------"
-    grep -E "^PKG_VERSION|^PKG_HASH" "$GO_MAKEFILE"
-    echo "--------------------------------------"
-    echo "✅ OpenWrt Go toolchain patched to $LATEST_VER successfully!"
-}
-
-# 执行补丁
-patch_openwrt_go || exit 1
