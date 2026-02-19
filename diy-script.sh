@@ -50,6 +50,7 @@ UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main"
 #UPDATE_PACKAGE "luci-app-homeproxy" "immortalwrt/homeproxy" "master"
 UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
+UPDATE_PACKAGE "istore" "linkease/istore" "main"
 
 #small-package
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
@@ -113,8 +114,8 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-ttyd=y"
     "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
     "CONFIG_PACKAGE_ttyd=y"
-    "CONFIG_PACKAGE_luci-app-homeproxy=y"
-    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-homeproxy=n"
+    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=n"
     "CONFIG_PACKAGE_luci-app-ddns-go=y"
     "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-argon-config=y"
@@ -136,6 +137,7 @@ provided_config_lines=(
     #"CONFIG_PACKAGE_luci-app-msd_lite=y"
     #"CONFIG_PACKAGE_luci-app-lucky=y"
     "CONFIG_PACKAGE_luci-app-gecoosac=y"
+	"CONFIG_PACKAGE_luci-app-store=y"
     #"CONFIG_PACKAGE_luci-app-openvpn-client=y"
 )
 
