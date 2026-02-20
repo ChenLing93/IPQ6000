@@ -14,7 +14,7 @@ env:
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: IPQ60XX-24.10-6.12
+  FIRMWARE_TAG: IPQ60XX-24.10-6.12 nowifi
   TZ: Asia/Shanghai
 
 jobs:
