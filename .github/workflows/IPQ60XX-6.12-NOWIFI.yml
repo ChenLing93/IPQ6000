@@ -112,6 +112,12 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
+        - name: Download GO (更新新版)
+        env:
+        GOTOOLCHAIN: auto
+        run: |
+        make -j$(nproc)
+
     - name: Compile Firmware(开始编译固件)
       id: compile
       run: |
