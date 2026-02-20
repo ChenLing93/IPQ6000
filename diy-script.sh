@@ -64,7 +64,7 @@ UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
         luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
         taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
         luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
-        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
+        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash luci-theme-proton2025 mihomo \
         luci-app-nikki luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
 
 #speedtest
@@ -130,11 +130,12 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-ttyd=y"
     "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
     "CONFIG_PACKAGE_ttyd=y"
-    "CONFIG_PACKAGE_luci-app-homeproxy=y"
-    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-homeproxy=n"
+    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=n"
     "CONFIG_PACKAGE_luci-app-ddns-go=y"
     "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-argon-config=y"
+	"CONFIG_PACKAGE_luci-theme-proton2025=y"
     "CONFIG_PACKAGE_nano=y"
     "CONFIG_BUSYBOX_CONFIG_LSUSB=n"
     "CONFIG_PACKAGE_luci-app-netspeedtest=y"
@@ -153,6 +154,7 @@ provided_config_lines=(
     #"CONFIG_PACKAGE_luci-app-msd_lite=y"
     #"CONFIG_PACKAGE_luci-app-lucky=y"
     "CONFIG_PACKAGE_luci-app-gecoosac=y"
+	"CONFIG_PACKAGE_luci-app-istore=y"
     "CONFIG_PACKAGE_luci-app-store=y"
     #"CONFIG_PACKAGE_luci-app-openvpn-client=y"
 	"CONFIG_PACKAGE_luci-app-wireguard=y"
