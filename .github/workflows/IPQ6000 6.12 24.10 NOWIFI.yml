@@ -1,0 +1,73 @@
+名称：IPQ60XX-24.10-6.12
+
+关于：
+  workflow_dispatch：
+	@@ -7,19 +7,19 @@ 在：
+
+环境：
+  REPO_URL：https://github.com/LiBwrt/openwrt-6.x.git
+  REPO_BRANCH：24.10-6.12
+  CONFIG_FILE：configs/ipq60xx-6.12-nowifi.config
+  DIY_SCRIPT：diy-script.sh
+  CLASH_KERNEL：amd64
+  CACHE_TOOLCHAIN：确实如此
+  UPLOAD_BIN_DIR：错误
+  FIRMWARE_RELEASE：确实如此
+  FIRMWARE_TAG：IPQ60XX-24.10-6.12
+  TZ：亚洲/上海
+
+职位：
+  构建：
+    运行时间：Ubuntu-22.04
+
+    步骤：
+    - 名称：Check Server Performance（检查服务器性能）
+	@@ -40,14 +40,13 @@ 工作：
+      环境：
+        DEBIAN_FRONTEND：非互动式
+      运行：|
+Docker rmi $（Docker images -q）
+sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android $AGENT_TOOLSDIRECTORY
+sudo -E apt-get -y purge Azure-cli ghc* zulu* llvm* Firefox google* dotnet* PowerShell OpenJDK* MongodB* moby* ||确实如此
+sudo -E apt-get -y 更新
+sudo -E apt-get -y install $（curl -fsSL is.gd/depends_ubuntu_2204）
+sudo -E systemctl daemon-reload
+sudo -E apt-get -y autoremove --purge
+sudo -E apt-get -y clean
+Sudo timedatectl set-timezone “$TZ”
+    - 名称：Combine Disks（合并磁盘）
+	@@ -68,6 +67,8 @@ 工作：
+echo “OPENWRT_PATH=$PWD” >> $GITHUB_ENV
+VERSION_INFO=$（git show -s --date=short --format=“作者： %an<br/>时间： %cd<br/>内容： %s<br/>hash： %H”）
+回声 “VERSION_INFO=$VERSION_INFO” >> $GITHUB_ENV
+    - 名称：生成变量（生成变量）
+      运行：|
+	@@ -99,6 +100,9 @@ 职位：
+      运行：|
+[ -e 文件 ] & mv 文件 $OPENWRT_PATH/files
+[ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
+    - 名称：Download DL Package（下载DL软件包）
+      运行：|
+	@@ -134,8 +138,11 @@ 工作：
+      运行：|
+光盘$OPENWRT_PATH/bin/targets/*/*
+猫沙256sums
+cp $OPENWRT_PATH/.config build.config
+mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk 包
+tar -zcf Packages.tar.gz packages
+rm -rf packages feeds.buildinfo version.buildinfo
+echo “FIRMWARE_PATH=$PWD” >> $GITHUB_ENV
+	@@ -158,13 +165,14 @@ 职位：
+        文物：${{ env.FIRMWARE_PATH }}/*
+        正文：|
+**This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
+### 📒 固件信息24.10（无WIFI）
+- 无WIFI带有线NSS的6.12内核固件
+- 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
+- ⚽ 固件源码： ${{ env.REPO_URL }}
+- 💝 源码分支： ${{ env.REPO_BRANCH }}
+- 🌐 默认地址: 192.168.1.1
+- 🔑 默认密码：密码
+### 🧊 固件版本
+- 固件编译前最后一次➦[主源码]（${{ env.REPO_URL }}）更新记录
+- ${{ 环境VERSION_INFO }}
