@@ -294,7 +294,70 @@ else
     echo "❌ Golang 工具链安装失败"
 fi
 
-# 设置环境变量
+# === 批量检查和修复 Makefile 格式错误 ===
+echo "=== 批量检查和修复 Makefile 格式 ==="
+
+fixed_count=0
+checked_count=0
+
+find package -name "Makefile" -type f 2>/dev/null | while read makefile; do
+    checked_count=$((checked_count + 1))
+    
+    # 检查文件是否可读
+    if [ ! -r "$makefile" ]; then
+        continue
+    fi
+    
+    # 检查是否有行首空格
+    if grep -q "^    " "$makefile" 2>/dev/null; then
+        echo "[$checked_count] 发现问题: $makefile"
+        
+        # 备份原文件
+        cp "$makefile" "$makefile.bak"
+        
+        # 修复：将行首 4 个空格替换为 Tab
+        sed -i 's/^    /\t/' "$makefile"
+        
+        # 如果还有空格，尝试更广泛的替换
+        if grep -q "^    " "$makefile"; then
+            sed -i 's/^[[:space:]]\+/\t/' "$makefile"
+        fi
+        
+        # 验证修复
+        if ! grep -q "^    " "$makefile" 2>/dev/null; then
+            echo "  ✅ 已修复"
+            fixed_count=$((fixed_count + 1))
+            rm "$makefile.bak"
+        else
+            echo "  ⚠️ 修复失败，保留备份"
+            mv "$makefile.bak" "$makefile"
+        fi
+    fi
+done
+
+echo "=== Makefile 格式检查完成 ==="
+
+# === 修复 mbedtls GCC 14.3.0 内联优化冲突 ===
+echo "=== 修复 mbedtls 编译错误 ==="
+
+if [ -f package/libs/mbedtls/Makefile ]; then
+    echo "修复 mbedtls Makefile"
+    
+    # 检查是否已经添加过修复选项
+    if ! grep -q "fno-inline-functions" package/libs/mbedtls/Makefile; then
+        # 备份
+        cp package/libs/mbedtls/Makefile package/libs/mbedtls/Makefile.bak
+        
+        # 在 TARGET_CFLAGS 行之前添加编译选项
+        sed -i '/TARGET_CFLAGS/i\  TARGET_CFLAGS += -fno-inline-functions' package/libs/mbedtls/Makefile
+        
+        echo "✅ mbedtls Makefile 已修复"
+    else
+        echo "✅ mbedtls Makefile 已包含修复选项"
+    fi
+fi
+
+# === 设置 Go 环境变量 ===
 echo "=== 设置 Go 环境变量 ==="
 export GOTOOLCHAIN=auto
 export GOPROXY=https://goproxy.cn,direct
