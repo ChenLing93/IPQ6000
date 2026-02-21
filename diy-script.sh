@@ -236,9 +236,9 @@ install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" "package/base-fil
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" "package/base-files/files/etc/uci-defaults/99_set_argon_primary"
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99-distfeeds.conf" "package/emortal/default-settings/files/99-distfeeds.conf"
 
-sed -i "/define Package\/default-settings\/install/a\\ \\t\$(INSTALL_DIR) \$(1)/etc\\n\ \t\$(INSTALL_DATA) ./files/99-distfeeds.conf \$(1)/etc/99-distfeeds.conf\n" "package/emortal/default-settings/Makefile"
+sed -i "/define Package\/default-settings\/install/a\\\\ \\\\t\$(INSTALL_DIR) \$(1)/etc\\\\n\\ \\t\$(INSTALL_DATA) ./files/99-distfeeds.conf \$(1)/etc/99-distfeeds.conf\\n" "package/emortal/default-settings/Makefile"
 
-sed -i "/exit 0/i\\ [ -f \'/etc/99-distfeeds.conf\' ] && mv \'/etc/99-distfeeds.conf\' \'/etc/opkg/distfeeds.conf\'\n\ sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" "package/emortal/default-settings/files/99-default-settings"
+sed -i "/exit 0/i\\\\ [ -f \\'/etc/99-distfeeds.conf\\' ] && mv \\'/etc/99-distfeeds.conf\\' \\'/etc/opkg/distfeeds.conf\\'\\n\\ sed -ri \\'/check_signature/s@^[^#]@#&@\\' /etc/opkg.conf\\n" "package/emortal/default-settings/files/99-default-settings"
 
 #解决 dropbear 配置的 bug
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
@@ -248,60 +248,56 @@ if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
     install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_nginx_setup.sh" "package/base-files/files/etc/uci-defaults/99_nginx_setup"
 fi
 
-# === 修复 ddns-go Go 版本问题 ===
-echo "=== 修复 ddns-go Go 版本 ==="
+# === 修复 mbedtls 编译错误 ===
+echo "=== 修复 mbedtls 编译错误 ==="
 
-# 方法 1: 修改 feeds 中的 ddns-go Makefile
-if [ -f feeds/packages/net/ddns-go/Makefile ]; then
-    echo "找到 ddns-go Makefile，添加 GOTOOLCHAIN=auto"
-    # 在 Build/Configure 前添加 GOTOOLCHAIN=auto
-    sed -i '/define Build\/Configure/i\  export GOTOOLCHAIN=auto' feeds/packages/net/ddns-go/Makefile
-    echo "✅ feeds/packages/net/ddns-go/Makefile 已修复"
-fi
-
-# 方法 2: 修改 package 中的 ddns-go Makefile（如果从 small-package 安装）
-if [ -f package/net/ddns-go/Makefile ]; then
-    echo "找到 package/ddns-go Makefile，添加 GOTOOLCHAIN=auto"
-    sed -i '/define Build\/Configure/i\  export GOTOOLCHAIN=auto' package/net/ddns-go/Makefile
-    echo "✅ package/net/ddns-go/Makefile 已修复"
-fi
-
-# 方法 3: 修改 luci-app-ddns-go 依赖的 ddns-go Makefile
-if [ -f feeds/packages/net/ddns-go/Makefile ]; then
-    echo "确保 ddns-go Makefile 包含正确的 Go 版本支持"
-    # 检查是否需要修改版本限制
-    if grep -q "go.mod requires go >= 1.25" feeds/packages/net/ddns-go/Makefile 2>/dev/null; then
-        echo "ddns-go 需要 Go 1.25+，已配置 GOTOOLCHAIN=auto"
+if [ -f package/libs/mbedtls/Makefile ]; then
+    echo "修复 mbedtls Makefile"
+    
+    # 检查是否已经添加过修复选项
+    if ! grep -q "fno-inline-functions" package/libs/mbedtls/Makefile; then
+        # 备份
+        cp package/libs/mbedtls/Makefile package/libs/mbedtls/Makefile.bak
+        
+        # 在 TARGET_CFLAGS 行之前添加编译选项
+        sed -i '/TARGET_CFLAGS/i\  TARGET_CFLAGS += -fno-inline-functions' package/libs/mbedtls/Makefile
+        
+        echo "✅ mbedtls Makefile 已修复"
+    else
+        echo "✅ mbedtls Makefile 已包含修复选项"
     fi
 fi
 
-# 方法 4: 更新 Golang 工具链到 25.x（支持 ddns-go 6.15.0）
-echo "=== 更新 Golang 工具链 ==="
-GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
-GOLANG_BRANCH="25.x"  # ✅ 从 24.x 改为 25.x
-
-if [[ -d ./feeds/packages/lang/golang ]]; then
-    echo "删除旧版本 Golang 工具链"
-    rm -rf ./feeds/packages/lang/golang
-fi
-
-echo "克隆 Golang 25.x 工具链"
-git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
-
-if [ -d ./feeds/packages/lang/golang ]; then
-    echo "✅ Golang 25.x 工具链已安装"
-else
-    echo "❌ Golang 工具链安装失败"
-fi
-
-# === 批量检查和修复 Makefile 格式错误 ===
+# === 批量检查和修复 Makefile 格式错误（安全版本）===
 echo "=== 批量检查和修复 Makefile 格式 ==="
 
 fixed_count=0
 checked_count=0
+skipped_count=0
+
+# 需要跳过的 Makefile（避免破坏核心包）
+skip_patterns=(
+    "package/libs/toolchain"
+    "package/kernel/linux"
+    "package/devel/gcc"
+)
 
 find package -name "Makefile" -type f 2>/dev/null | while read makefile; do
     checked_count=$((checked_count + 1))
+    
+    # 检查是否在跳过列表中
+    should_skip=0
+    for pattern in "${skip_patterns[@]}"; do
+        if [[ "$makefile" == */$pattern/* ]]; then
+            should_skip=1
+            break
+        fi
+    done
+    
+    if [ $should_skip -eq 1 ]; then
+        skipped_count=$((skipped_count + 1))
+        continue
+    fi
     
     # 检查文件是否可读
     if [ ! -r "$makefile" ]; then
@@ -336,26 +332,9 @@ find package -name "Makefile" -type f 2>/dev/null | while read makefile; do
 done
 
 echo "=== Makefile 格式检查完成 ==="
-
-# === 修复 mbedtls GCC 14.3.0 内联优化冲突 ===
-echo "=== 修复 mbedtls 编译错误 ==="
-
-if [ -f package/libs/mbedtls/Makefile ]; then
-    echo "修复 mbedtls Makefile"
-    
-    # 检查是否已经添加过修复选项
-    if ! grep -q "fno-inline-functions" package/libs/mbedtls/Makefile; then
-        # 备份
-        cp package/libs/mbedtls/Makefile package/libs/mbedtls/Makefile.bak
-        
-        # 在 TARGET_CFLAGS 行之前添加编译选项
-        sed -i '/TARGET_CFLAGS/i\  TARGET_CFLAGS += -fno-inline-functions' package/libs/mbedtls/Makefile
-        
-        echo "✅ mbedtls Makefile 已修复"
-    else
-        echo "✅ mbedtls Makefile 已包含修复选项"
-    fi
-fi
+echo "已检查: $checked_count 个文件"
+echo "已跳过: $skipped_count 个核心文件"
+echo "已修复: $fixed_count 个文件"
 
 # === 设置 Go 环境变量 ===
 echo "=== 设置 Go 环境变量 ==="
