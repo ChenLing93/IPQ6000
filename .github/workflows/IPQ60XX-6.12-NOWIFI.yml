@@ -16,7 +16,6 @@ env:
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: IPQ60XX-6.12-NOWIFI
   TZ: Asia/Shanghai
-  GOTOOLCHAIN: auto
 
 jobs:
   Build:
