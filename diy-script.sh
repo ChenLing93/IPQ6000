@@ -82,6 +82,7 @@ wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Mak
 UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master"
 UPDATE_PACKAGE "ddnsto" "kenzok8/openwrt-packages" "master" "pkg"
 UPDATE_PACKAGE "cups" "https://github.com/op4packages/openwrt-cups.git" "master" "pkg"
+UPDATE_PACKAGE "istore" "linkease/istore" "main"
 
 keywords_to_delete=(
     "xiaomi_ax3600"
@@ -153,6 +154,8 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-i18n-autoreboot-zh-cn=y"
 	"CONFIG_PACKAGE_luci-app-ddnsto=y"
 	"CONFIG_PACKAGE_ddnsto=y"
+	"CONFIG_PACKAGE_luci-app-store=y"
+	"CONFIG_PACKAGE_luci-app-istorex=y"
 )
 
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
