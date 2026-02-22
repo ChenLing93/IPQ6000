@@ -88,6 +88,9 @@ UPDATE_PACKAGE "istore" "linkease/istore" "main"
 UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main" "name"
 UPDATE_PACKAGE "luci-app-passwall" "Openwrt-Passwall/openwrt-passwall" "main"
 UPDATE_PACKAGE "xray-core v2ray-geodata v2ray-geosite sing-box chinadns-ng dns2socks hysteria ipt2socks naiveproxy shadowsocks-libev shadowsocks-rust shadowsocksr-libev simple-obfs tcping trojan-plus tuic-client v2ray-plugin xray-plugin geoview shadow-tls" "Openwrt-Passwall/openwrt-passwall-packages" "main" "pkg"
+UPDATE_PACKAGE "quectel-CM-5G" "mdsdtech/5G-Modem-Packages" "main" "pkg"
+
+
 
 keywords_to_delete=(
     "xiaomi_ax3600"
@@ -170,6 +173,17 @@ provided_config_lines=(
 	"CONFIG_PACKAGE_kmod-usb-net=y"
 	"CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y"
 	"CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y"
+	# PCIe 5G 模组支持 - 使用内核6.12内置的MHI驱动
+	"CONFIG_PACKAGE_kmod-mhi-bus=y"      # MHI 总线核心
+	"CONFIG_PACKAGE_kmod-mhi-wwan=y"     # MHI WWAN 控制驱动（移除了 kmod-mhi-net）
+	"CONFIG_PACKAGE_kmod-wwan=y"         # WWAN 通用框架
+	"CONFIG_PACKAGE_kmod-pci=y"          # PCIe 支持
+	# PCIe 5G 拨号工具
+	"CONFIG_PACKAGE_quectel-CM-5G=y"
+	# QMI/MBIM 协议支持
+	"CONFIG_PACKAGE_libqmi=y"
+	"CONFIG_PACKAGE_libmbim=y"
+	"CONFIG_PACKAGE_uqmi=y"
 	# QModem 依赖工具
 	"CONFIG_PACKAGE_uqmi=y"
 	"CONFIG_PACKAGE_quectel-cm=y"
