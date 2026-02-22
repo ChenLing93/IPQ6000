@@ -1,0 +1,56 @@
+#!/bin/sh
+# 生成基于网关 MAC 的固定 MAC 地址
+# 使用网关 MAC 的后 3 字节 + 自定义前缀（02:AA:BB）
+
+# 检查是否存在 RNDIS 接口（通常是 eth1 或 usb0）
+for iface in eth1 usb0 usb1; do
+	if [ -d "/sys/class/net/$iface" ]; then
+		# 获取当前 MAC 地址
+		current_mac=$(cat /sys/class/net/$iface/address 2>/dev/null)
+		
+		# 生成固定 MAC：前缀使用 02:AA:BB（本地管理地址）
+		# 后缀使用当前 MAC 的后 3 字节（保持硬件特征）
+		if [ -n "$current_mac" ]; then
+			fixed_mac="02:AA:BB:${current_mac#*:}"
+		else
+			# 如果无法获取当前 MAC，使用随机后缀
+			fixed_mac="02:AA:BB:$(openssl rand -hex 3 | sed 's/\(..\)/\1:/g;s/:$//')"
+		fi
+		
+		# 检查是否已在 UCI 配置中
+		uci get network.$iface >/dev/null 2>&1
+		if [ $? -eq 0 ]; then
+			# 更新现有接口的 MAC
+			old_mac=$(uci get network.$iface.macaddr 2>/dev/null)
+			if [ -z "$old_mac" ] || [ "$old_mac" != "$fixed_mac" ]; then
+				uci set network.$iface.macaddr="$fixed_mac"
+				logger -t "fix-rndis-mac" "Set $iface MAC: $fixed_mac"
+			fi
+		fi
+	fi
+done
+
+# 特别处理 WAN 接口（如果使用 RNDIS）
+if uci get network.wan >/dev/null 2>&1; then
+	wan_device=$(uci get network.wan.device 2>/dev/null)
+	if [ -n "$wan_device" ] && [ "$wan_device" != "eth0.2" ]; then
+		# 检查是否为 RNDIS 相关接口
+		if echo "$wan_device" | grep -qE '^(eth1|usb0|usb1|eth+)'; then
+			current_mac=$(cat /sys/class/net/$wan_device/address 2>/dev/null)
+			if [ -n "$current_mac" ]; then
+				fixed_mac="02:AA:BB:${current_mac#*:}"
+				old_mac=$(uci get network.wan.macaddr 2>/dev/null)
+				if [ -z "$old_mac" ] || [ "$old_mac" != "$fixed_mac" ]; then
+					uci set network.wan.macaddr="$fixed_mac"
+					logger -t "fix-rndis-mac" "Set WAN($wan_device) MAC: $fixed_mac"
+				fi
+			fi
+		fi
+	fi
+fi
+
+uci commit network
+exit 0
+EOF
+
+chmod +x package/base-files/files/etc/uci-defaults/99_fix_rndis_mac
