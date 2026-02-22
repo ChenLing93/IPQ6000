@@ -147,8 +147,6 @@ provided_config_lines=(
     "CONFIG_PACKAGE_cups-client=y"
     "CONFIG_PACKAGE_kmod-usb-printer=y"
 )
-	
-)
 
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
 
