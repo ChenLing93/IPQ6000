@@ -90,7 +90,7 @@ keywords_to_delete=(
 )
 
 
-[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("usb" "wpad" "hostapd")
+[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd")
 #[[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "jdcloud_ax1800-pro" "redmi_ax5-jdcloud")
 [[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "disk")
 [[ $FIRMWARE_TAG == *"EMMC"* ]] && keywords_to_delete+=("cmiot_ax18" "qihoo_v6" "redmi_ax5=y" "zn_m2")
@@ -137,6 +137,17 @@ provided_config_lines=(
     #"CONFIG_PACKAGE_luci-app-lucky=y"
     "CONFIG_PACKAGE_luci-app-gecoosac=y"
     #"CONFIG_PACKAGE_luci-app-openvpn-client=y"
+    "CONFIG_PACKAGE_luci-app-autoreboot=y"
+    "CONFIG_PACKAGE_luci-i18n-autoreboot-zh-cn=y"
+	"CONFIG_PACKAGE_luci-app-diskman=y"
+    "CONFIG_PACKAGE_luci-i18n-diskman-zh-cn=y"
+	# 打印机支持 CUPS
+    "CONFIG_PACKAGE_cups=y"
+    "CONFIG_PACKAGE_cups-bsd=y"
+    "CONFIG_PACKAGE_cups-client=y"
+    "CONFIG_PACKAGE_kmod-usb-printer=y"
+)
+	
 )
 
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
@@ -174,13 +185,21 @@ else
 	"CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y"
 	"CONFIG_PACKAGE_kmod-usb-storage=y"
 	"CONFIG_PACKAGE_kmod-usb2=y"
+	#USB3.0支持
+	"CONFIG_PACKAGE_kmod-usb3=y"
+    "CONFIG_PACKAGE_kmod-usb-storage=y"
+    "CONFIG_PACKAGE_kmod-usb-storage-uas=y"
+    "CONFIG_PACKAGE_kmod-fs-ext4=y"
+    "CONFIG_PACKAGE_kmod-fs-exfat=y"
+    "CONFIG_PACKAGE_kmod-fs-ntfs3=y"
+    "CONFIG_PACKAGE_kmod-fs-vfat=y"
     )
 fi
 
 
 # 只有 $FIRMWARE_TAG 不包含 'EMMC' 且包含 'WIFI-NO' 时执行删除命令
 if [[ "$FIRMWARE_TAG" != *"EMMC"* && "$FIRMWARE_TAG" == *"NOWIFI"* && "$FIRMWARE_TAG" != *"IPQ807X"* ]]; then
-    sed -i 's/\s*kmod-[^ ]*usb[^ ]*\s*\\\?//g' ./target/linux/qualcommax/Makefile
+   # sed -i 's/\s*kmod-[^ ]*usb[^ ]*\s*\\\?//g' ./target/linux/qualcommax/Makefile
     sed -i 's/\s*kmod-[^ ]*ath11k[^ ]*\s*\\\?//g' ./target/linux/qualcommax/Makefile
     echo "已删除 Makefile 中的 USB 相关 package"
 fi
