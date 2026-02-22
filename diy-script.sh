@@ -80,6 +80,7 @@ mkdir -p package/parted && \
 wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O package/parted/Makefile
 
 UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master"
+UPDATE_PACKAGE "ddnsto" "kenzok8/openwrt-packages" "master" "pkg"
 
 keywords_to_delete=(
     "xiaomi_ax3600"
@@ -124,10 +125,10 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-ttyd=y"
     "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
     "CONFIG_PACKAGE_ttyd=y"
-    "CONFIG_PACKAGE_luci-app-homeproxy=y"
-    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
-    "CONFIG_PACKAGE_luci-app-ddns-go=y"
-    "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
+    #"CONFIG_PACKAGE_luci-app-homeproxy=y"
+    #"CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
+    #"CONFIG_PACKAGE_luci-app-ddns-go=y"
+    #"CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-argon-config=y"
     "CONFIG_PACKAGE_nano=y"
     "CONFIG_BUSYBOX_CONFIG_LSUSB=y"
@@ -149,11 +150,8 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-i18n-diskman-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-autoreboot=y"
     "CONFIG_PACKAGE_luci-i18n-autoreboot-zh-cn=y"
-    # 打印机支持 CUPS
-    "CONFIG_PACKAGE_cups=y"
-    "CONFIG_PACKAGE_cups-bsd=y"
-    "CONFIG_PACKAGE_cups-client=y"
-    "CONFIG_PACKAGE_kmod-usb-printer=y"
+	"CONFIG_PACKAGE_luci-app-ddnsto=y"
+	"CONFIG_PACKAGE_ddnsto=y"
 )
 
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
@@ -170,6 +168,10 @@ if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
         "CONFIG_PACKAGE_kmod-fs-exfat=y"
         "CONFIG_PACKAGE_kmod-fs-ntfs3=y"
         "CONFIG_PACKAGE_kmod-fs-vfat=y"
+		"CONFIG_PACKAGE_cups=y"
+	    "CONFIG_PACKAGE_cups-bsd=y"
+ 	   "CONFIG_PACKAGE_cups-client=y"
+  	  "CONFIG_PACKAGE_kmod-usb-printer=y"
     )
 else
     provided_config_lines+=(
