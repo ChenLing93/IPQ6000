@@ -81,6 +81,7 @@ wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Mak
 
 UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master"
 UPDATE_PACKAGE "ddnsto" "kenzok8/openwrt-packages" "master" "pkg"
+UPDATE_PACKAGE "cups" "https://github.com/op4packages/openwrt-cups.git" "master" "pkg"
 
 keywords_to_delete=(
     "xiaomi_ax3600"
