@@ -175,7 +175,8 @@ provided_config_lines=(
 	"CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y"
 	# PCIe 5G 模组支持 - 使用内核6.12内置的MHI驱动
 	"CONFIG_PACKAGE_kmod-mhi-bus=y"      # MHI 总线核心
-	"CONFIG_PACKAGE_kmod-mhi-wwan=y"     # MHI WWAN 控制驱动（移除了 kmod-mhi-net）
+	"CONFIG_PACKAGE_kmod-mhi-wwan-ctrl=y"
+	"CONFIG_PACKAGE_kmod-mhi-wwan-mbim=y"
 	"CONFIG_PACKAGE_kmod-wwan=y"         # WWAN 通用框架
 	"CONFIG_PACKAGE_kmod-pci=y"          # PCIe 支持
 	# PCIe 5G 拨号工具
