@@ -110,12 +110,32 @@ UPDATE_PACKAGE "istore" "linkease/istore" "main"
 #UPDATE_PACKAGE "luci-app-qmodem luci-app-qmodem-sms luci-app-qmodem-mwan" "FUjr/QModem" "main" "pkg"
 UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main" "name"
 
+# ============================================
+# 修复依赖缺失问题
+# ============================================
+
 # 修复 qmodem 包在内核 6.12 下的依赖问题
-# 原因: 内核 6.12 中 kmod-mhi-wwan 已拆分为 kmod-mhi-wwan-ctrl 和 kmod-mhi-wwan-mbim
-# 修复方式: 更新 Makefile 中的依赖声明
-if [ -d "package/qmodem/application/qmodem" ]; then
-    sed -i 's/+kmod-mhi-wwan/+kmod-mhi-wwan-ctrl +kmod-mhi-wwan-mbim/g' package/qmodem/application/qmodem/Makefile
-    echo "[修复] 已更新 qmodem/application/qmodem/Makefile 中的依赖声明"
+echo "[开始] 修复 qmodem 包依赖..."
+QMODEM_MAKEFILES=$(find package -name "Makefile" -path "*/qmodem/*" 2>/dev/null)
+if [ -n "$QMODEM_MAKEFILES" ]; then
+    echo "[找到] qmodem Makefile 文件:"
+    echo "$QMODEM_MAKEFILES"
+    for makefile in $QMODEM_MAKEFILES; do
+        echo "[修复] 处理文件: $makefile"
+        # 修复 MHI 驱动依赖
+        sed -i 's/+kmod-mhi-wwan/+kmod-mhi-wwan-ctrl +kmod-mhi-wwan-mbim/g' "$makefile"
+        # 修复 quectel-CM-5G 依赖（移除或替换为正确的包名）
+        sed -i 's/+quectel-CM-5G/+quectel-cm/g' "$makefile"
+        # 显示修复后的内容（仅相关行）
+        echo "[检查] $makefile 的 DEPENDS 行:"
+        grep -n "DEPENDS" "$makefile" | grep -E "mhi-wwan|quectel"
+    done
+    echo "[完成] 已修复 qmodem 包的依赖声明"
+else
+    echo "[警告] 未找到 qmodem Makefile 文件"
+    # 尝试显示 package 目录结构
+    echo "[调试] 搜索 qmodem 目录:"
+    find package -type d -name "*qmodem*" 2>/dev/null || echo "未找到 qmodem 目录"
 fi
 
 # ============================================
@@ -252,6 +272,14 @@ provided_config_lines=(
 	"CONFIG_PACKAGE_kmod-qca-nss-shaper=y"        # 流量整形
 	"CONFIG_PACKAGE_kmod-qca-nss-ifb=y"           # IFB 接口
 	"CONFIG_PACKAGE_kmod-qca-nss-netlink=y"       # Netlink 接口
+
+	# ============================================
+	# 修复缺失的依赖包
+	# ============================================
+	"CONFIG_PACKAGE_libparted=y"                  # 分区工具库（fatresize 依赖）
+	"CONFIG_PACKAGE_nikki=y"                      # Nikki 工具（luci-app-nikki 依赖）
+	"CONFIG_PACKAGE_python3-pysocks=y"            # Python3 Socks 库
+	"CONFIG_PACKAGE_python3-unidecode=y"          # Python3 Unicode 解码库
 )
 
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
