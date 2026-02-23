@@ -110,6 +110,14 @@ UPDATE_PACKAGE "istore" "linkease/istore" "main"
 #UPDATE_PACKAGE "luci-app-qmodem luci-app-qmodem-sms luci-app-qmodem-mwan" "FUjr/QModem" "main" "pkg"
 UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main" "name"
 
+# 修复 qmodem 包在内核 6.12 下的依赖问题
+# 原因: 内核 6.12 中 kmod-mhi-wwan 已拆分为 kmod-mhi-wwan-ctrl 和 kmod-mhi-wwan-mbim
+# 修复方式: 更新 Makefile 中的依赖声明
+if [ -d "package/qmodem/application/qmodem" ]; then
+    sed -i 's/+kmod-mhi-wwan/+kmod-mhi-wwan-ctrl +kmod-mhi-wwan-mbim/g' package/qmodem/application/qmodem/Makefile
+    echo "[修复] 已更新 qmodem/application/qmodem/Makefile 中的依赖声明"
+fi
+
 # ============================================
 # 10. PassWall 代理工具
 # ============================================
