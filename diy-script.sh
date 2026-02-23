@@ -108,7 +108,7 @@ UPDATE_PACKAGE "istore" "linkease/istore" "main"
 # 9. 5G 调制解调器工具
 # ============================================
 #UPDATE_PACKAGE "luci-app-qmodem luci-app-qmodem-sms luci-app-qmodem-mwan" "FUjr/QModem" "main" "pkg"
-UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main" "name"
+#UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main" "name"
 
 # ============================================
 # 修复依赖缺失问题
@@ -233,53 +233,53 @@ provided_config_lines=(
 	"CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y"
 	"CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y"
 	# PCIe 5G 模组支持 - 使用内核6.12内置的MHI驱动
-	"CONFIG_PACKAGE_kmod-mhi-bus=y" # MHI 总线核心
-	"CONFIG_PACKAGE_kmod-mhi-wwan-ctrl=y"
-	"CONFIG_PACKAGE_kmod-mhi-wwan-mbim=y"
-	"CONFIG_PACKAGE_kmod-wwan=y" # WWAN 通用框架
-	"CONFIG_PACKAGE_kmod-pci=y" # PCIe 支持
+	#"CONFIG_PACKAGE_kmod-mhi-bus=y" # MHI 总线核心
+	#"CONFIG_PACKAGE_kmod-mhi-wwan-ctrl=y"
+	#"CONFIG_PACKAGE_kmod-mhi-wwan-mbim=y"
+	#"CONFIG_PACKAGE_kmod-wwan=y" # WWAN 通用框架
+	#"CONFIG_PACKAGE_kmod-pci=y" # PCIe 支持
 	# PCIe 5G 拨号工具
-	"CONFIG_PACKAGE_quectel-CM-5G=y"
+	#"CONFIG_PACKAGE_quectel-CM-5G=y"
 	# QMI/MBIM 协议支持
-	"CONFIG_PACKAGE_libqmi=y"
-	"CONFIG_PACKAGE_libmbim=y"
-	"CONFIG_PACKAGE_uqmi=y"
+	#"CONFIG_PACKAGE_libqmi=y"
+	#"CONFIG_PACKAGE_libmbim=y"
+	#"CONFIG_PACKAGE_uqmi=y"
 	# QModem 依赖工具
-	"CONFIG_PACKAGE_uqmi=y"
-	"CONFIG_PACKAGE_quectel-cm=y"
-	"CONFIG_PACKAGE_sms-tool=y"
+	#"CONFIG_PACKAGE_uqmi=y"
+	#"CONFIG_PACKAGE_quectel-cm=y"
+	#"CONFIG_PACKAGE_sms-tool=y"
 
 # ============================================
 # NSS RMNET 支持 (解决 nss_rmnet_rx_get_ifnum 未定义错误)
 # ============================================
-"CONFIG_PACKAGE_kmod-qca-nss-rmnet=y"         # NSS RMNET 驱动（关键！）
-"CONFIG_PACKAGE_kmod-qca-nss-gre-tunnel=y"    # GRE 隧道加速
-"CONFIG_PACKAGE_kmod-qca-nss-svlan=y"         # SVLAN 支持
-"CONFIG_PACKAGE_kmod-qca-nss-bridge-mgr=y"    # 网桥管理器
+#"CONFIG_PACKAGE_kmod-qca-nss-rmnet=y"         # NSS RMNET 驱动（关键！）
+#"CONFIG_PACKAGE_kmod-qca-nss-gre-tunnel=y"    # GRE 隧道加速
+#"CONFIG_PACKAGE_kmod-qca-nss-svlan=y"         # SVLAN 支持
+#"CONFIG_PACKAGE_kmod-qca-nss-bridge-mgr=y"    # 网桥管理器
 
 	# ============================================
 	# NSS 网络加速支持 (解决 qca-nss-ecm 编译错误)
 	# ============================================
-	"CONFIG_PACKAGE_kmod-qca-nss-drv=y"           # NSS 驱动核心
-	"CONFIG_PACKAGE_kmod-qca-nss-ecm=y"           # NSS 连接管理器
-	"CONFIG_PACKAGE_kmod-qca-nss-dp=y"            # NSS 数据平面加速
-	"CONFIG_PACKAGE_kmod-qca-nss-crypto=y"        # NSS 加密加速
-	"CONFIG_PACKAGE_kmod-qca-ssdk=y"              # NSS 交换机驱动
-	"CONFIG_PACKAGE_kmod-qca-nss-macsec=y"        # NSS MACsec 加密
-	"CONFIG_PACKAGE_kmod-qca-nss-ipv4-reasm=y"    # IPv4 分片重组
-	"CONFIG_PACKAGE_kmod-qca-nss-ipv6-reasm=y"    # IPv6 分片重组
-	"CONFIG_PACKAGE_kmod-qca-nss-tun6rd=y"        # 6in4 隧道
-	"CONFIG_PACKAGE_kmod-qca-nss-tunipip6=y"      # 6rd 隧道
-	"CONFIG_PACKAGE_kmod-qca-nss-gre=y"           # GRE 隧道
-	"CONFIG_PACKAGE_kmod-qca-nss-tunipip4=y"      # IPinIP 隧道
-	"CONFIG_PACKAGE_kmod-qca-nss-vxlan=y"         # VXLAN 隧道
-	"CONFIG_PACKAGE_kmod-qca-nss-mirror=y"        # 端口镜像
-	"CONFIG_PACKAGE_kmod-qca-nss-pptp=y"          # PPTP VPN
-	"CONFIG_PACKAGE_kmod-qca-nss-l2tp=y"          # L2TP VPN
-	"CONFIG_PACKAGE_kmod-qca-nss-qdisc=y"         # QoS 调度
-	"CONFIG_PACKAGE_kmod-qca-nss-shaper=y"        # 流量整形
-	"CONFIG_PACKAGE_kmod-qca-nss-ifb=y"           # IFB 接口
-	"CONFIG_PACKAGE_kmod-qca-nss-netlink=y"       # Netlink 接口
+	#"CONFIG_PACKAGE_kmod-qca-nss-drv=y"           # NSS 驱动核心
+	#"CONFIG_PACKAGE_kmod-qca-nss-ecm=y"           # NSS 连接管理器
+	#"CONFIG_PACKAGE_kmod-qca-nss-dp=y"            # NSS 数据平面加速
+	#"CONFIG_PACKAGE_kmod-qca-nss-crypto=y"        # NSS 加密加速
+	#"CONFIG_PACKAGE_kmod-qca-ssdk=y"              # NSS 交换机驱动
+	#"CONFIG_PACKAGE_kmod-qca-nss-macsec=y"        # NSS MACsec 加密
+	#"CONFIG_PACKAGE_kmod-qca-nss-ipv4-reasm=y"    # IPv4 分片重组
+	#"CONFIG_PACKAGE_kmod-qca-nss-ipv6-reasm=y"    # IPv6 分片重组
+	#"CONFIG_PACKAGE_kmod-qca-nss-tun6rd=y"        # 6in4 隧道
+	#"CONFIG_PACKAGE_kmod-qca-nss-tunipip6=y"      # 6rd 隧道
+	#"CONFIG_PACKAGE_kmod-qca-nss-gre=y"           # GRE 隧道
+	#"CONFIG_PACKAGE_kmod-qca-nss-tunipip4=y"      # IPinIP 隧道
+	#"CONFIG_PACKAGE_kmod-qca-nss-vxlan=y"         # VXLAN 隧道
+	#"CONFIG_PACKAGE_kmod-qca-nss-mirror=y"        # 端口镜像
+	#"CONFIG_PACKAGE_kmod-qca-nss-pptp=y"          # PPTP VPN
+	#"CONFIG_PACKAGE_kmod-qca-nss-l2tp=y"          # L2TP VPN
+	#"CONFIG_PACKAGE_kmod-qca-nss-qdisc=y"         # QoS 调度
+	#"CONFIG_PACKAGE_kmod-qca-nss-shaper=y"        # 流量整形
+	#"CONFIG_PACKAGE_kmod-qca-nss-ifb=y"           # IFB 接口
+	#"CONFIG_PACKAGE_kmod-qca-nss-netlink=y"       # Netlink 接口
 
 	# ============================================
 	# 修复缺失的依赖包
