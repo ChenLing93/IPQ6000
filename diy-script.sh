@@ -249,6 +249,14 @@ provided_config_lines=(
 	"CONFIG_PACKAGE_quectel-cm=y"
 	"CONFIG_PACKAGE_sms-tool=y"
 
+# ============================================
+# NSS RMNET 支持 (解决 nss_rmnet_rx_get_ifnum 未定义错误)
+# ============================================
+"CONFIG_PACKAGE_kmod-qca-nss-rmnet=y"         # NSS RMNET 驱动（关键！）
+"CONFIG_PACKAGE_kmod-qca-nss-gre-tunnel=y"    # GRE 隧道加速
+"CONFIG_PACKAGE_kmod-qca-nss-svlan=y"         # SVLAN 支持
+"CONFIG_PACKAGE_kmod-qca-nss-bridge-mgr=y"    # 网桥管理器
+
 	# ============================================
 	# NSS 网络加速支持 (解决 qca-nss-ecm 编译错误)
 	# ============================================
