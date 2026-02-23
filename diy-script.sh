@@ -150,7 +150,7 @@ keywords_to_delete=(
 	"mr7350" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn"
 	"CONFIG_TARGET_INITRAMFS" "ddns" "kucat" "bootstrap"
 )
-[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd" "redmi_ax5")
+[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd")
 [[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "disk")
 [[ $FIRMWARE_TAG == *"EMMC"* ]] && keywords_to_delete+=("cmiot_ax18" "qihoo_v6" "redmi_ax5" "zn_m2")
 
@@ -208,7 +208,7 @@ provided_config_lines=(
 	"CONFIG_PACKAGE_luci-app-istorex=y"
 	"CONFIG_PACKAGE_luci-app-quickstart=y"
 	"CONFIG_PACKAGE_quickstart=y"
-	"CONFIG_PACKAGE_luci-app-openclash=y"
+	#"CONFIG_PACKAGE_luci-app-openclash=y"
 	
 	# DiskMan 依赖
 	"CONFIG_PACKAGE_parted=y"
