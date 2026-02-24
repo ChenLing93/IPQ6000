@@ -1,29 +1,22 @@
 #!/bin/bash
-# ============================================
-# OpenWrt IPQ6018 DIY 自动配置脚本
-# 平台: Qualcomm IPQ6018 (NOWIFI/EMMC 版本)
-# 内核: 6.12
-# ============================================
 
-# 1. 修改默认 IP 地址
-#sed -i 's/192.168.5.1/10.0.0.1/g' package/base-files/files/bin/config_generate
-sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate
-sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/etc/config/network
+# 修改默认IP
+# sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
 
-# 2. 软件包更新函数定义
+#安装和更新软件包
 UPDATE_PACKAGE() {
 	local PKG_NAME=$1
 	local PKG_REPO=$2
 	local PKG_BRANCH=$3
 	local PKG_SPECIAL=$4
 
-	# 清理旧的包 - 删除 feeds 中已存在的同名包
-	read -ra PKG_NAMES <<< "$PKG_NAME"
+	# 清理旧的包
+	read -ra PKG_NAMES <<< "$PKG_NAME"  # 将PKG_NAME按空格分割成数组
 	for NAME in "${PKG_NAMES[@]}"; do
 		rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname "*$NAME*" -prune)
 	done
 
-	# 克隆仓库 - 从 GitHub 获取软件包源码
+	# 克隆仓库
 	if [[ $PKG_REPO == http* ]]; then
 		local REPO_NAME=$(echo $PKG_REPO | awk -F '/' '{gsub(/\.git$/, "", $NF); print $NF}')
 		git clone --depth=1 --single-branch --branch $PKG_BRANCH "$PKG_REPO" package/$REPO_NAME
@@ -35,73 +28,50 @@ UPDATE_PACKAGE() {
 	# 根据 PKG_SPECIAL 处理包
 	case "$PKG_SPECIAL" in
 		"pkg")
-			# pkg 模式: 从仓库中提取多个子包到 package 根目录
+			# 提取每个包
 			for NAME in "${PKG_NAMES[@]}"; do
-				echo "moving $NAME"
+   				echo "moving $NAME"
 				cp -rf $(find ./package/$REPO_NAME/*/ -maxdepth 3 -type d -iname "*$NAME*" -prune) ./package/
 			done
+			# 删除剩余的包
 			rm -rf ./package/$REPO_NAME/
 			;;
 		"name")
-			# name 模式: 重命名仓库目录为指定包名
+			# 重命名包
 			mv -f ./package/$REPO_NAME ./package/$PKG_NAME
 			;;
 	esac
 }
 
-echo ">>> Cloning critical dependencies individually..."
 
-# Nikki Core
-git clone --depth=1 --branch main https://github.com/nikkinikki-org/nikki.git package/nikki 2>/dev/null || \
-git clone --depth=1 https://github.com/kenzok8/openwrt-packages.git package/kopenwrt-packages # 备用源
-
-# 如果上面失败了，尝试从 small-package 单独提取 nikki
-if [ ! -d "package/nikki" ]; then
-    git clone --depth=1 --branch main https://github.com/kenzok8/small-package.git package/small-temp
-    if [ -d "package/small-temp/nikki" ]; then
-        mv package/small-temp/nikki package/nikki
-    fi
-    rm -rf package/small-temp
-fi
-
-# ============================================
-# 3. 基础工具安装
-# ============================================
 UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master"
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
 UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main"
 #UPDATE_PACKAGE "luci-app-homeproxy" "immortalwrt/homeproxy" "master"
-#UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main"
+UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 
-# ============================================
-# 4. 科学上网工具集
-# ============================================
+#small-package
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
-naiveproxy shadowsocks-rust v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
-tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
-luci-app-passwall smartdns luci-app-smartdns v2dat mosbnb luci-app-mosbnb \
-taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
-luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
-luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
+        naiveproxy shadowsocks-rust v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
+        tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
+        luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
+        taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
+        luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
+        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
+        luci-app-nikki luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
 
-# ============================================
-# 5. 网络测速工具
-# ============================================
+#speedtest
 UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
 UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
-#UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "master"
 
-# ============================================
-# 6. 容器与文件工具
-# ============================================
+UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "master"
+UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
+
 UPDATE_PACKAGE "openwrt-podman" "https://github.com/breeze303/openwrt-podman" "main"
 UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main"
 sed -i 's|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-$(ARCH_PACKAGES) $(1)/usr/bin/quickfile|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-aarch64_generic $(1)/usr/bin/quickfile|' package/luci-app-quickfile/quickfile/Makefile
 
-# ============================================
-# 7. 磁盘管理工具
-# ============================================
 rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname luci-app-diskman -prune)
 rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname parted -prune)
 mkdir -p package/luci-app-diskman && \
@@ -111,57 +81,25 @@ sed -i '/ntfs-3g-utils /d' package/luci-app-diskman/Makefile
 mkdir -p package/parted && \
 wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O package/parted/Makefile
 
-# ============================================
-# 8. 服务工具
-# ============================================
-UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master"
-UPDATE_PACKAGE "ddnsto" "kenzok8/openwrt-packages" "master" "pkg"
-UPDATE_PACKAGE "cups" "https://github.com/op4packages/openwrt-cups.git" "master" "pkg"
-UPDATE_PACKAGE "istore" "linkease/istore" "main"
+UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "main"
 
-# ============================================
-# 9. 5G 调制解调器工具
-# ============================================
-#UPDATE_PACKAGE "luci-app-qmodem luci-app-qmodem-sms luci-app-qmodem-mwan" "FUjr/QModem" "main" "pkg"
-UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main" "name"
-
-# ============================================
-# 10. PassWall 代理工具
-# ============================================
-UPDATE_PACKAGE "luci-app-passwall" "Openwrt-Passwall/openwrt-passwall" "main"
-UPDATE_PACKAGE "xray-core v2ray-geodata v2ray-geosite sing-box chinadns-ng dns2socks hysteria ipt2socks naiveproxy shadowsocks-libev shadowsocks-rust shadowsocksr-libev simple-obfs tcping trojan-plus tuic-client v2ray-plugin xray-plugin geoview shadow-tls" "Openwrt-Passwall/openwrt-passwall-packages" "main" "pkg"
-
-# ============================================
-# 11. 移远 5G 拨号工具
-# ============================================
-UPDATE_PACKAGE "quectel-CM-5G" "mdsdtech/5G-Modem-Packages" "main" "pkg"
-
-# ============================================
-# 12. 配置清理 - 删除不需要的软件包
-# ============================================
 keywords_to_delete=(
     "xiaomi_ax3600" "xiaomi_ax9000" "xiaomi_ax1800" "glinet" "jdcloud_ax6600"
-    "mr7350" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn" 
-    "CONFIG_TARGET_INITRAMFS" "mihomo" "kucat" "bootstrap"
-    "vlmcsd" "luci-app-vlmcsd" "openclash" "homeproxy"
+    "mr7350" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn" "CONFIG_TARGET_INITRAMFS" "ddns" "LSUSB" "mihomo"
+    "smartdns" "kucat" "bootstrap"
 )
 
-# 仅在 NOWIFI 时删除 WiFi 相关，保留 USB
-[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd")
-# 非 EMMC 删除 Samba，但保留 disk 相关以防误删
-[[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba")
+
+[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("usb" "wpad" "hostapd")
+#[[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "jdcloud_ax1800-pro" "redmi_ax5-jdcloud")
+[[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "disk")
 [[ $FIRMWARE_TAG == *"EMMC"* ]] && keywords_to_delete+=("cmiot_ax18" "qihoo_v6" "redmi_ax5=y" "zn_m2")
 
-# 执行删除 (使用 grep -v 避免 sed 正则破坏格式)
 for keyword in "${keywords_to_delete[@]}"; do
-    if [ -f .config ]; then
-        grep -v "$keyword" .config > .config.tmp && mv .config.tmp .config || true
-    fi
+    sed -i "/$keyword/d" ./.config
 done
 
-# ============================================
-# 2. 定义所有需要启用的配置
-# ============================================
+# Configuration lines to append to .config
 provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-zerotier=y"
     "CONFIG_PACKAGE_luci-i18n-zerotier-zh-cn=y"
@@ -175,362 +113,193 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-ttyd=y"
     "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
     "CONFIG_PACKAGE_ttyd=y"
+    "CONFIG_PACKAGE_luci-app-homeproxy=y"
+    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-ddns-go=y"
     "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-argon-config=y"
     "CONFIG_PACKAGE_nano=y"
-    "CONFIG_BUSYBOX_CONFIG_LSUSB=y"
+    "CONFIG_BUSYBOX_CONFIG_LSUSB=n"
     "CONFIG_PACKAGE_luci-app-netspeedtest=y"
+    "CONFIG_PACKAGE_luci-app-vlmcsd=y"
     "CONFIG_COREMARK_OPTIMIZE_O3=y"
     "CONFIG_COREMARK_ENABLE_MULTITHREADING=y"
     "CONFIG_COREMARK_NUMBER_OF_THREADS=6"
+    #"CONFIG_PACKAGE_luci-theme-design=y"
     "CONFIG_PACKAGE_luci-app-filetransfer=y"
     "CONFIG_PACKAGE_openssh-sftp-server=y"
-    "CONFIG_PACKAGE_luci-app-frpc=y"
+    "CONFIG_PACKAGE_luci-app-frpc=y" 
     "CONFIG_OPKG_USE_CURL=y"
-    "CONFIG_PACKAGE_opkg=y"
+    "CONFIG_PACKAGE_opkg=y"   
     "CONFIG_USE_APK=n"
     "CONFIG_PACKAGE_luci-app-tailscale=y"
+    #"CONFIG_PACKAGE_luci-app-msd_lite=y"
+    #"CONFIG_PACKAGE_luci-app-lucky=y"
     "CONFIG_PACKAGE_luci-app-gecoosac=y"
-    "CONFIG_PACKAGE_usbutils=y"
-    "CONFIG_PACKAGE_luci-app-diskman=y"
-    "CONFIG_PACKAGE_luci-i18n-diskman-zh-cn=y"
-    "CONFIG_PACKAGE_luci-app-autoreboot=y"
-    "CONFIG_PACKAGE_luci-i18n-autoreboot-zh-cn=y"
-    # 打印机
-    "CONFIG_PACKAGE_cups=y"
-    "CONFIG_PACKAGE_cups-bsd=y"
-    "CONFIG_PACKAGE_cups-client=y"
-    "CONFIG_PACKAGE_kmod-usb-printer=y"
-    # iStore & DDNSTO
-    "CONFIG_PACKAGE_luci-app-store=y"
-    "CONFIG_PACKAGE_ddnsto=y"
-	"CONFIG_PACKAGE_luci-app-quickstart=y"
-    "CONFIG_PACKAGE_luci-app-ddnsto=y"
-    # 运行库
-    "CONFIG_PACKAGE_parted=y"
-    "CONFIG_PACKAGE_libparted=y"
-    "CONFIG_PACKAGE_fatresize=y"
-    "CONFIG_PACKAGE_nikki=y"
-    "CONFIG_PACKAGE_luci-app-nikki=y"
-    "CONFIG_PACKAGE_python3=y"
-    "CONFIG_PACKAGE_python3-pysocks=y"
-    "CONFIG_PACKAGE_python3-unidecode=y"
-    "CONFIG_PACKAGE_python3-light=y"
+    #"CONFIG_PACKAGE_luci-app-openvpn-client=y"
 )
 
-# ============================================
-# 3. 根据标签追加特定配置
-# ============================================
+DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
+
 if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
     provided_config_lines+=(
         "CONFIG_PACKAGE_hostapd-common=n"
         "CONFIG_PACKAGE_wpad-openssl=n"
-        "CONFIG_PACKAGE_kmod-usb3=y"
-        "CONFIG_PACKAGE_kmod-usb-storage=y"
-        "CONFIG_PACKAGE_kmod-usb-storage-uas=y"
-        "CONFIG_PACKAGE_kmod-fs-ext4=y"
-        "CONFIG_PACKAGE_kmod-fs-exfat=y"
-        "CONFIG_PACKAGE_kmod-fs-ntfs3=y"
-        "CONFIG_PACKAGE_kmod-fs-vfat=y"
-        "CONFIG_PACKAGE_block-mount=y"
-        "CONFIG_PACKAGE_kmod-usb-dwc3=y"
-        "CONFIG_PACKAGE_kmod-usb-dwc3-qcom=y"
     )
+
+    #find $DTS_PATH -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\)\.dtsi/ipq\1-nowifi.dtsi/
+    #find "$DTS_PATH" -type f \( -name "ipq6018-256m.dtsi" -o -name "ipq8074-512m.dtsi" \) -exec sed -i \
+    #    -e 's/reg = <0x0 0x4ab00000 0x0 0x02800000>;/reg = <0x0 0x4ab00000 0x0 0x1000000>;/' \
+    #    -e 's/reg = <0x0 0x4b000000 0x0 0x3700000>;/reg = <0x0 0x4b000000 0x0 0x1000000>;/' {} +
+    #find $DTS_PATH -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\).dtsi/ipq\1-nowifi.dtsi/g' {} +
+    find "$DTS_PATH" -type f ! -iname '*nowifi*' -exec sed -i \
+      -e '/#include "ipq6018.dtsi"/a #include "ipq6018-nowifi.dtsi"' \
+      -e '/#include "ipq8074.dtsi"/a #include "ipq8074-nowifi.dtsi"' {} +
+    echo "qualcommax set up nowifi successfully!"
+
 else
     provided_config_lines+=(
         "CONFIG_PACKAGE_kmod-usb-net=y"
         "CONFIG_PACKAGE_kmod-usb-net-rndis=y"
         "CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y"
-        "CONFIG_PACKAGE_kmod-usb-acm=y"
-        "CONFIG_PACKAGE_kmod-usb-ehci=y"
-        "CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y"
-        "CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y"
-        "CONFIG_PACKAGE_kmod-usb-net-rtl8152=y"
-        "CONFIG_PACKAGE_kmod-usb-ohci=y"
-        "CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y"
-        "CONFIG_PACKAGE_kmod-usb2=y"
+        "CONFIG_PACKAGE_usbutils=y"
+	"CONFIG_PACKAGE_kmod-usb-acm=y"
+	"CONFIG_PACKAGE_kmod-usb-ehci=y"
+	"CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y"
+	"CONFIG_PACKAGE_kmod-usb-net-rndis=y"
+	"CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y"
+	"CONFIG_PACKAGE_kmod-usb-net-rtl8152=y"
+	"CONFIG_PACKAGE_kmod-usb-net-sierrawireless=y"
+	"CONFIG_PACKAGE_kmod-usb-ohci=y"
+	"CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y"
+	"CONFIG_PACKAGE_kmod-usb-storage=y"
+	"CONFIG_PACKAGE_kmod-usb2=y"
     )
 fi
 
-if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
-    provided_config_lines+=(
-        "CONFIG_PACKAGE_luci-app-podman=y"
-        "CONFIG_PACKAGE_podman=y"
-        "CONFIG_PACKAGE_iptables-mod-extra=y"
-        "CONFIG_PACKAGE_ip6tables-nft=y"
-        "CONFIG_PACKAGE_iptables-mod-fullconenat=y"
-        "CONFIG_PACKAGE_libip4tc=y"
-        "CONFIG_PACKAGE_libip6tc=y"
-        "CONFIG_PACKAGE_luci-app-passwall=y"
-        "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=n"
-        "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client=n"
-        "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=n"
-        "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=n"
-        "CONFIG_PACKAGE_htop=y"
-        "CONFIG_PACKAGE_tcpdump=y"
-        "CONFIG_PACKAGE_qrencode=y"
-        "CONFIG_PACKAGE_smartmontools-drivedb=y"
-        "CONFIG_PACKAGE_default-settings=y"
-        "CONFIG_PACKAGE_default-settings-chn=y"
-        "CONFIG_PACKAGE_kmod-br-netfilter=y"
-        "CONFIG_PACKAGE_kmod-veth=y"
-        "CONFIG_PACKAGE_luci-app-frps=y"
-        "CONFIG_PACKAGE_luci-app-samba4=y"
-        "CONFIG_PACKAGE_luci-app-quickfile=y"
-    )
+
+# 只有 $FIRMWARE_TAG 不包含 'EMMC' 且包含 'WIFI-NO' 时执行删除命令
+if [[ "$FIRMWARE_TAG" != *"EMMC"* && "$FIRMWARE_TAG" == *"NOWIFI"* && "$FIRMWARE_TAG" != *"IPQ807X"* ]]; then
+    sed -i 's/\s*kmod-[^ ]*usb[^ ]*\s*\\\?//g' ./target/linux/qualcommax/Makefile
+    sed -i 's/\s*kmod-[^ ]*ath11k[^ ]*\s*\\\?//g' ./target/linux/qualcommax/Makefile
+    echo "已删除 Makefile 中的 USB 相关 package"
 fi
 
-[[ $FIRMWARE_TAG == "IPQ"* ]] && provided_config_lines+=("CONFIG_PACKAGE_sqm-scripts-nss=y")
 
-# ============================================
-# 4. 写入配置并修复格式 (关键步骤)
-# ============================================
+rm package/kernel/mac80211/patches/nss/ath11k/999-902-ath11k-fix-WDS-by-disabling-nwds.patch
+rm package/kernel/mac80211/patches/nss/subsys/{999-775-wifi-mac80211-Changes-for-WDS-MLD.patch,999-922-mac80211-fix-null-chanctx-warning-for-NSS-dynamic-VLAN.patch}
 
-# 先清洗 .config：去除所有空行和注释行中的多余空格，防止后续追加出错
-if [ -f .config ]; then
-    sed -i 's/^[[:space:]]*//; s/[[:space:]]*$//' .config
-    sed -i '/^$/d' .config
-fi
-
-# 追加新配置
-for line in "${provided_config_lines[@]}"; do
-    # 确保行首没有空格，且格式严格为 KEY=VALUE
-    clean_line=$(echo "$line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | sed 's/[[:space:]]*=[[:space:]]*/=/g')
-    
-    # 如果配置已存在，先删除旧行
-    key=$(echo "$clean_line" | cut -d '=' -f 1)
-    if [ -f .config ]; then
-        grep -v "^${key}=" .config > .config.tmp 2>/dev/null && mv .config.tmp .config || true
-        grep -v "^# ${key} " .config >> .config.tmp 2>/dev/null && mv .config.tmp .config || true
-    fi
-    
-    # 追加新行
-    echo "$clean_line" >> .config
-done
-
-# ============================================
-# 5. 执行 Feeds 更新和 Defconfig (自动修复格式错误)
-# ============================================
-echo ">>> Updating feeds and fixing config format..."
-./scripts/feeds update -a >/dev/null 2>&1
-./scripts/feeds install -a >/dev/null 2>&1
-
-echo ">>> Fixing libparted & fatresize dependencies..."
-
-# 1. 安装官方 libparted 和 parted
-./scripts/feeds install libparted parted
-
-# 2. 清理旧缓存
-rm -rf build_dir/target-*/libparted-* build_dir/target-*/fatresize-*
-rm -rf staging_dir/target-*/stamp/.libparted_* staging_dir/target-*/stamp/.fatresize_*
-
-# 3. 强制配置
-# 确保 libparted 开启
-sed -i 's/# CONFIG_PACKAGE_libparted is not set/CONFIG_PACKAGE_libparted=y/' .config
-sed -i 's/# CONFIG_PACKAGE_parted is not set/CONFIG_PACKAGE_parted=y/' .config
-echo "CONFIG_PACKAGE_libparted=y" >> .config
-echo "CONFIG_PACKAGE_parted=y" >> .config
-
-# 4. (可选) 如果仍然报错，暂时放弃 fatresize
-# fatresize 仅用于调整 FAT32 分区，功能较单一。如果 libparted 问题无法解决，可禁用它。
-# 取消下面一行的注释即可禁用
-# sed -i 's/CONFIG_PACKAGE_fatresize=y/# CONFIG_PACKAGE_fatresize is not set/' .config
-# echo "⚠️ WARNING: fatresize disabled to fix build error."
-
-echo ">>> Dependencies fixed."
-
-# 这一步至关重要：make defconfig 会重新解析 .config，
-# 自动移除无效选项，修正格式错误，并补全依赖。
-make defconfig >/dev/null 2>&1
-
-# 验证结果
-echo ">>> Verifying config..."
-if grep -q "CONFIG_PACKAGE_luci-app-istore=y" .config; then
-    echo "✅ iStore enabled"
-else
-    echo "❌ iStore failed"
-fi
-
-if grep -q "CONFIG_PACKAGE_ddnsto=y" .config; then
-    echo "✅ DDNSTO enabled"
-else
-    echo "❌ DDNSTO failed"
-fi
-
-# 检查是否有格式错误残留
-if grep -q "^ " .config || grep -q "^	" .config; then
-    echo "⚠️ Warning: Config file still contains leading spaces/tabs. Cleaning..."
-    sed -i 's/^[[:space:]]*//' .config
-fi
-
-DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
-
-# ============================================
-# 14. NOWIFI 版本专属配置
-# ============================================
-if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
-	provided_config_lines+=(
-		"CONFIG_PACKAGE_hostapd-common=n"
-		"CONFIG_PACKAGE_wpad-openssl=n"
-		# USB 3.0 支持
-		"CONFIG_PACKAGE_kmod-usb3=y"
-		"CONFIG_PACKAGE_kmod-usb-storage=y"
-		"CONFIG_PACKAGE_kmod-usb-storage-uas=y"
-		"CONFIG_PACKAGE_kmod-fs-ext4=y"
-		"CONFIG_PACKAGE_kmod-fs-exfat=y"
-		"CONFIG_PACKAGE_kmod-fs-ntfs3=y"
-		"CONFIG_PACKAGE_kmod-fs-vfat=y"
-		"CONFIG_PACKAGE_cups=y"
-		"CONFIG_PACKAGE_cups-bsd=y"
-		"CONFIG_PACKAGE_cups-client=y"
-		"CONFIG_PACKAGE_kmod-usb-printer=y"
-	)
-else
-	provided_config_lines+=(
-		"CONFIG_PACKAGE_kmod-usb-net=y"
-		"CONFIG_PACKAGE_kmod-usb-net-rndis=y"
-		"CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y"
-		"CONFIG_PACKAGE_usbutils=y"
-		"CONFIG_PACKAGE_kmod-usb-acm=y"
-		"CONFIG_PACKAGE_kmod-usb-ehci=y"
-		"CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y"
-		"CONFIG_PACKAGE_kmod-usb-net-rndis=y"
-		"CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y"
-		"CONFIG_PACKAGE_kmod-usb-net-rtl8152=y"
-		"CONFIG_PACKAGE_kmod-usb-net-sierrawireless=y"
-		"CONFIG_PACKAGE_kmod-usb-ohci=y"
-		"CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y"
-		"CONFIG_PACKAGE_kmod-usb-storage=y"
-		"CONFIG_PACKAGE_kmod-usb2=y"
-	)
-fi
-
-# ============================================
-# 15. EMMC 版本额外配置
-# ============================================
 [[ $FIRMWARE_TAG == *"EMMC"* ]] && provided_config_lines+=(
-	"CONFIG_PACKAGE_luci-app-podman=y"
-	"CONFIG_PACKAGE_podman=y"
-	"CONFIG_PACKAGE_luci-app-openlist2=y"
-	"CONFIG_PACKAGE_luci-i18n-openlist2-zh-cn=y"
-	"CONFIG_PACKAGE_luci-app-autoreboot=y"
-	"CONFIG_PACKAGE_luci-i18n-autoreboot-zh-cn=y"
-	# 打印机支持 CUPS
-	"CONFIG_PACKAGE_cups=y"
-	"CONFIG_PACKAGE_cups-bsd=y"
-	"CONFIG_PACKAGE_cups-client=y"
-	"CONFIG_PACKAGE_kmod-usb-printer=y"
-	"CONFIG_PACKAGE_iptables-mod-extra=y"
-	"CONFIG_PACKAGE_ip6tables-nft=y"
-	"CONFIG_PACKAGE_ip6tables-mod-fullconenat=y"
-	"CONFIG_PACKAGE_iptables-mod-fullconenat=y"
-	"CONFIG_PACKAGE_libip4tc=y"
-	"CONFIG_PACKAGE_libip6tc=y"
-	"CONFIG_PACKAGE_luci-app-passwall=y"
-	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=n"
-	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server=n"
-	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client=n"
-	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client=n"
-	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs=n"
-	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y"
-	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=n"
-	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin=y"
-	"CONFIG_PACKAGE_htop=y"
-	"CONFIG_PACKAGE_tcpdump=y"
-	"CONFIG_PACKAGE_openssl-util=y"
-	"CONFIG_PACKAGE_qrencode=y"
-	"CONFIG_PACKAGE_smartmontools-drivedb=y"
-	"CONFIG_PACKAGE_usbutils=y"
-	"CONFIG_PACKAGE_default-settings=y"
-	"CONFIG_PACKAGE_default-settings-chn=y"
-	"CONFIG_PACKAGE_iptables-mod-conntrack-extra=y"
-	"CONFIG_PACKAGE_kmod-br-netfilter=y"
-	"CONFIG_PACKAGE_kmod-ip6tables=y"
-	"CONFIG_PACKAGE_kmod-ipt-conntrack=y"
-	"CONFIG_PACKAGE_kmod-ipt-extra=y"
-	"CONFIG_PACKAGE_kmod-ipt-nat=y"
-	"CONFIG_PACKAGE_kmod-ipt-nat6=y"
-	"CONFIG_PACKAGE_kmod-ipt-physdev=y"
-	"CONFIG_PACKAGE_kmod-nf-ipt6=y"
-	"CONFIG_PACKAGE_kmod-nf-ipvs=y"
-	"CONFIG_PACKAGE_kmod-nf-nat6=y"
-	"CONFIG_PACKAGE_kmod-dummy=y"
-	"CONFIG_PACKAGE_kmod-veth=y"
-	"CONFIG_PACKAGE_luci-app-frps=y"
-	"CONFIG_PACKAGE_luci-app-samba4=y"
-	"CONFIG_PACKAGE_luci-app-openclash=y"
-	"CONFIG_PACKAGE_luci-app-quickfile=y"
+    #"CONFIG_PACKAGE_luci-app-diskman=y"
+    #"CONFIG_PACKAGE_luci-i18n-diskman-zh-cn=y"
+    #"CONFIG_PACKAGE_luci-app-docker=m"
+    #"CONFIG_PACKAGE_luci-i18n-docker-zh-cn=m"
+    #"CONFIG_PACKAGE_luci-app-dockerman=m"
+    #"CONFIG_PACKAGE_luci-i18n-dockerman-zh-cn=m"
+    "CONFIG_PACKAGE_luci-app-podman=y"
+    "CONFIG_PACKAGE_podman=y"
+    "CONFIG_PACKAGE_luci-app-openlist2=y"
+    "CONFIG_PACKAGE_luci-i18n-openlist2-zh-cn=y"
+    #"CONFIG_PACKAGE_fdisk=y"
+    #"CONFIG_PACKAGE_parted=y"
+    "CONFIG_PACKAGE_iptables-mod-extra=y"
+    "CONFIG_PACKAGE_ip6tables-nft=y"
+    "CONFIG_PACKAGE_ip6tables-mod-fullconenat=y"
+    "CONFIG_PACKAGE_iptables-mod-fullconenat=y"
+    "CONFIG_PACKAGE_libip4tc=y"
+    "CONFIG_PACKAGE_libip6tc=y"
+    "CONFIG_PACKAGE_luci-app-passwall=y"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin=n"
+    "CONFIG_PACKAGE_htop=y"
+    #"CONFIG_PACKAGE_fuse-utils=y"
+    "CONFIG_PACKAGE_tcpdump=y"
+    #"CONFIG_PACKAGE_sgdisk=y"
+    "CONFIG_PACKAGE_openssl-util=y"
+    #"CONFIG_PACKAGE_resize2fs=y"
+    "CONFIG_PACKAGE_qrencode=y"
+    "CONFIG_PACKAGE_smartmontools-drivedb=y"
+    "CONFIG_PACKAGE_usbutils=y"
+    "CONFIG_PACKAGE_default-settings=y"
+    "CONFIG_PACKAGE_default-settings-chn=y"
+    "CONFIG_PACKAGE_iptables-mod-conntrack-extra=y"
+    "CONFIG_PACKAGE_kmod-br-netfilter=y"
+    "CONFIG_PACKAGE_kmod-ip6tables=y"
+    "CONFIG_PACKAGE_kmod-ipt-conntrack=y"
+    "CONFIG_PACKAGE_kmod-ipt-extra=y"
+    "CONFIG_PACKAGE_kmod-ipt-nat=y"
+    "CONFIG_PACKAGE_kmod-ipt-nat6=y"
+    "CONFIG_PACKAGE_kmod-ipt-physdev=y"
+    "CONFIG_PACKAGE_kmod-nf-ipt6=y"
+    "CONFIG_PACKAGE_kmod-nf-ipvs=y"
+    "CONFIG_PACKAGE_kmod-nf-nat6=y"
+    "CONFIG_PACKAGE_kmod-dummy=y"
+    "CONFIG_PACKAGE_kmod-veth=y"
+    #"CONFIG_PACKAGE_automount=y"
+    "CONFIG_PACKAGE_luci-app-frps=y"
+    #"CONFIG_PACKAGE_luci-app-ssr-plus=y"
+    #"CONFIG_PACKAGE_luci-app-passwall2=y"
+    "CONFIG_PACKAGE_luci-app-samba4=y"
+    "CONFIG_PACKAGE_luci-app-openclash=y"
+    "CONFIG_PACKAGE_luci-app-quickfile=y"
+    #"CONFIG_PACKAGE_quickfile=y"
 )
 
 [[ $FIRMWARE_TAG == "IPQ"* ]] && provided_config_lines+=("CONFIG_PACKAGE_sqm-scripts-nss=y")
 
-# 将配置项追加到 .config 文件
+
+# Append configuration lines to .config
 for line in "${provided_config_lines[@]}"; do
-	echo "$line" >> .config
+    echo "$line" >> .config
 done
 
-# ============================================
-# 16. 内核补丁与设备树修复
-# ============================================
+
 rm ./target/linux/qualcommax/patches-6.12/0083-v6.11-arm64-dts-qcom-ipq6018-add-sdhci-node.patch
 
-# 创建 ipq6018-nowifi.dtsi 文件以修复 NOWIFI 版本编译错误
-mkdir -p ./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom
-cat > ./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6018-nowifi.dtsi << 'EOF'
-// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-#include "ipq6018.dtsi"
+#./scripts/feeds update -a
+#./scripts/feeds install -a
 
-/ {
-	model = "Qualcomm Technologies, Inc. IPQ6018-512M-NOWIFI";
-	compatible = "qcom,ipq6018";
-
-	memory@40000000 {
-		device_type = "memory";
-		reg = <0x0 0x40000000 0x0 0x20000000>;
-	};
-};
-
-/* 删除 WiFi 相关节点 */
-&wifi0 {
-	status = "disabled";
- };
-
-&wifi1 {
-	status = "disabled";
- };
-EOF
-
-# ============================================
-# 17. 代码修复
-# ============================================
-# 修复文件
+#修复文件
 find ./ -name "getifaddr.c" -exec sed -i 's/return 1;/return 0;/g' {} \;
 sed -i '/\/usr\/bin\/zsh/d' package/base-files/files/etc/profile
+
 find ./ -name "cascade.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 find ./ -name "dark.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 find ./ -name "cascade.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 find ./ -name "dark.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 
-# ============================================
-# 18. UCI 默认值设置
-# ============================================
-# 修改ttyd为免密
+#修改ttyd为免密
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" "package/base-files/files/etc/uci-defaults/99_ttyd-nopass"
+
+
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" "package/base-files/files/etc/uci-defaults/99_set_argon_primary"
-# 解决 dropbear 配置的 bug
+install -Dm755 "${GITHUB_WORKSPACE}/scripts/99-distfeeds.conf" "package/emortal/default-settings/files/99-distfeeds.conf"
+sed -i "/define Package\/default-settings\/install/a\\
+\\t\$(INSTALL_DIR) \$(1)/etc\\n\
+\t\$(INSTALL_DATA) ./files/99-distfeeds.conf \$(1)/etc/99-distfeeds.conf\n" "package/emortal/default-settings/Makefile"
+
+sed -i "/exit 0/i\\
+[ -f \'/etc/99-distfeeds.conf\' ] && mv \'/etc/99-distfeeds.conf\' \'/etc/opkg/distfeeds.conf\'\n\
+sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" "package/emortal/default-settings/files/99-default-settings"
+
+#解决 dropbear 配置的 bug
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
+
 if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
-	# 解决 nginx 的问题
-	install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_nginx_setup.sh" "package/base-files/files/etc/uci-defaults/99_nginx_setup"
+    #解决 nginx 的问题
+    install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_nginx_setup.sh" "package/base-files/files/etc/uci-defaults/99_nginx_setup"
 fi
 
-# ============================================
-# 19. Golang 编译器更新
-# ============================================
+#update golang
 GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
-GOLANG_BRANCH="25.x"
-if [[ -d ./feeds/packages/lang/golang ]]; then \
-	rm -rf ./feeds/packages/lang/golang
+GOLANG_BRANCH="24.x"
+if [[ -d ./feeds/packages/lang/golang ]]; then
+	\rm -rf ./feeds/packages/lang/golang
 	git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
 fi
