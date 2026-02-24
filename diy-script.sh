@@ -48,10 +48,11 @@ UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 
 # small-package (包含大量常用插件)
+# [修改] 已恢复 trojan-plus 和 luci-app-nikki
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
         naiveproxy v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
         tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
-        luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
+        luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosbnb \
         taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
         luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
         luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
@@ -62,7 +63,6 @@ UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.gi
 UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
 
 UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "master"
-# 删除了重复的 tailscale 调用
 
 UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main"
 
@@ -178,6 +178,50 @@ provided_config_lines+=(
     "CONFIG_PACKAGE_kmod-usb-printer=y"
     "CONFIG_PACKAGE_p910nd=y"
     "CONFIG_PACKAGE_luci-app-p910nd=y"
+
+    # --- [关键修复] 解决 trojan-plus, nikki, ssr-plus 依赖缺失 ---
+    
+    # 1. Diskman/fatresize 依赖
+    "CONFIG_PACKAGE_libparted=y"
+    "CONFIG_PACKAGE_parted=y"
+    "CONFIG_PACKAGE_fatresize=y"
+
+    # 2. Trojan-Plus 完整依赖 (Boost 库全家桶)
+    # trojan-plus 强依赖 boost，必须显式开启所有相关模块
+    "CONFIG_PACKAGE_libboost=y"
+    "CONFIG_PACKAGE_libboost-system=y"
+    "CONFIG_PACKAGE_libboost-filesystem=y"
+    "CONFIG_PACKAGE_libboost-thread=y"
+    "CONFIG_PACKAGE_libboost-program_options=y"
+    "CONFIG_PACKAGE_libboost-atomic=y"
+    "CONFIG_PACKAGE_libboost-chrono=y"
+    "CONFIG_PACKAGE_libboost-date_time=y"
+    "CONFIG_PACKAGE_libboost-regex=y"
+    "CONFIG_PACKAGE_libboost-serialization=y"
+    "CONFIG_PACKAGE_libboost-context=y"
+    "CONFIG_PACKAGE_libboost-coroutine=y"
+    
+    # 3. SSR-Plus 及 PassWall 依赖 (Shadowsocks-libev 全家桶)
+    "CONFIG_PACKAGE_shadowsocks-libev=y"
+    "CONFIG_PACKAGE_shadowsocks-libev-ss-local=y"
+    "CONFIG_PACKAGE_shadowsocks-libev-ss-redir=y"
+    "CONFIG_PACKAGE_shadowsocks-libev-ss-server=y"
+    "CONFIG_PACKAGE_simple-obfs=y"
+    "CONFIG_PACKAGE_shadowsocksr-libev-alt=y"
+    "CONFIG_PACKAGE_shadowsocksr-libev-ssr-local=y"
+    "CONFIG_PACKAGE_shadowsocksr-libev-ssr-redir=y"
+
+    # 4. Nikki 完整依赖
+    "CONFIG_PACKAGE_nikki=y"
+    # 如果 small-package 里有 nikki 的子包，也尝试开启
+    "CONFIG_PACKAGE_nikki-core=y" 
+
+    # 5. Python 依赖 (onionshare 等)
+    "CONFIG_PACKAGE_python3-light=y"
+    "CONFIG_PACKAGE_python3-pysocks=y"
+    "CONFIG_PACKAGE_python3-unidecode=y"
+    
+    # --- 依赖修复结束 ---
 )
 
 if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
@@ -364,17 +408,17 @@ fi
 sed -i 's/TARGET_CFLAGS +=/TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 /g' package/libs/mbedtls/Makefile 2>/dev/null
 find feeds/libs/mbedtls -name Makefile -exec sed -i 's/TARGET_CFLAGS +=/TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 /g' {} + 2>/dev/null || true
 
-# ⚠️ 已禁用 Go 语言自动更新功能，以防止网络波动导致构建失败
-# 如需更新 Go 版本，请手动修改 feeds/packages/lang/golang/golang/Makefile
-# echo "Skipping auto Go update to ensure build stability."
 # ============================================
-# Golang 编译器更新
+# Golang 编译器更新 (固定到 25.x 分支)
 # ============================================
 GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
 GOLANG_BRANCH="25.x"
-if [[ -d ./feeds/packages/lang/golang ]]; then \
-	rm -rf ./feeds/packages/lang/golang
-	git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
+if [[ -d ./feeds/packages/lang/golang ]]; then 
+    rm -rf ./feeds/packages/lang/golang
+    if git clone "$GOLANG_REPO" -b "$GOLANG_BRANCH" ./feeds/packages/lang/golang 2>/dev/null; then
+        echo "✅ Golang updated to branch $GOLANG_BRANCH successfully."
+    else
+        echo "⚠️ Failed to update Golang, using default version."
+    fi
 fi
-
-# patch_openwrt_go || exit 1  <-- 已注释
+# ============================================
