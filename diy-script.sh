@@ -81,7 +81,6 @@ UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main
 # ============================================
 # 6. 容器与文件工具
 # ============================================
-UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
 UPDATE_PACKAGE "openwrt-podman" "https://github.com/breeze303/openwrt-podman" "main"
 UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main"
 sed -i 's|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-$(ARCH_PACKAGES) $(1)/usr/bin/quickfile|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-aarch64_generic $(1)/usr/bin/quickfile|' package/luci-app-quickfile/quickfile/Makefile
@@ -190,7 +189,7 @@ provided_config_lines=(
     "CONFIG_PACKAGE_cups-client=y"
     "CONFIG_PACKAGE_kmod-usb-printer=y"
     # iStore & DDNSTO
-    "CONFIG_PACKAGE_luci-app-istore=y"
+    "CONFIG_PACKAGE_luci-app-store=y"
     "CONFIG_PACKAGE_ddnsto=y"
 	"CONFIG_PACKAGE_luci-app-quickstart=y"
     "CONFIG_PACKAGE_luci-app-ddnsto=y"
