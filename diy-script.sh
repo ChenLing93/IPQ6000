@@ -127,78 +127,75 @@ UPDATE_PACKAGE "quectel-CM-5G" "mdsdtech/5G-Modem-Packages" "main" "pkg"
 # 12. 配置清理 - 删除不需要的软件包
 # ============================================
 keywords_to_delete=(
-	"xiaomi_ax3600"
-	"xiaomi_ax9000"
-	"xiaomi_ax1800"
-	"glinet"
-	"jdcloud_ax6600"
-	"mr7350"
-	"uugamebooster"
-	"luci-app-wol"
-	"luci-i18n-wol-zh-cn"
-	"CONFIG_TARGET_INITRAMFS"
-	"ddns"
-	"mihomo"
-	"kucat"
-	"bootstrap"
-	"vlmcsd"
-	"luci-app-vlmcsd"
+    "xiaomi_ax3600" "xiaomi_ax9000" "xiaomi_ax1800" "glinet" "jdcloud_ax6600"
+    "mr7350" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn" 
+    "CONFIG_TARGET_INITRAMFS" "mihomo" "kucat" "bootstrap"
+    "vlmcsd" "luci-app-vlmcsd" "openclash" "homeproxy"
 )
-[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd")
-[[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "disk")
-[[ $FIRMWARE_TAG == *"EMMC"* ]] && keywords_to_delete+=("cmiot_ax18" "qihoo_v6" "redmi_ax5" "zn_m2")
 
+# 仅在 NOWIFI 时删除 WiFi 相关，保留 USB
+[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd")
+# 非 EMMC 删除 Samba，但保留 disk 相关以防误删
+[[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba")
+[[ $FIRMWARE_TAG == *"EMMC"* ]] && keywords_to_delete+=("cmiot_ax18" "qihoo_v6" "redmi_ax5=y" "zn_m2")
+
+# 执行删除 (使用 grep -v 避免 sed 正则破坏格式)
 for keyword in "${keywords_to_delete[@]}"; do
-	sed -i "/$keyword/d" ./.config
+    if [ -f .config ]; then
+        grep -v "$keyword" .config > .config.tmp && mv .config.tmp .config || true
+    fi
 done
 
 # ============================================
-# 13. 软件包配置项 (写入 .config)
+# 2. 定义所有需要启用的配置
 # ============================================
 provided_config_lines=(
-	"CONFIG_PACKAGE_luci-app-zerotier=y"
-	"CONFIG_PACKAGE_luci-i18n-zerotier-zh-cn=y"
-	# "CONFIG_PACKAGE_luci-app-adguardhome=y"
-	# "CONFIG_PACKAGE_luci-i18n-adguardhome-zh-cn=y"
-	"CONFIG_PACKAGE_luci-app-poweroff=y"
-	"CONFIG_PACKAGE_luci-i18n-poweroff-zh-cn=y"
-	"CONFIG_PACKAGE_cpufreq=y"
-	"CONFIG_PACKAGE_luci-app-cpufreq=y"
-	"CONFIG_PACKAGE_luci-i18n-cpufreq-zh-cn=y"
-	"CONFIG_PACKAGE_luci-app-ttyd=y"
-	"CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
-	"CONFIG_PACKAGE_ttyd=y"
-	#"CONFIG_PACKAGE_luci-app-homeproxy=y"
-	#"CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
-	#"CONFIG_PACKAGE_luci-app-ddns-go=y"
-	#"CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
-	"CONFIG_PACKAGE_luci-app-argon-config=y"
-	"CONFIG_PACKAGE_nano=y"
-	"CONFIG_BUSYBOX_CONFIG_LSUSB=y"
-	"CONFIG_PACKAGE_luci-app-netspeedtest=y"
-	"CONFIG_COREMARK_OPTIMIZE_O3=y"
-	"CONFIG_COREMARK_ENABLE_MULTITHREADING=y"
-	"CONFIG_COREMARK_NUMBER_OF_THREADS=6"
-	"CONFIG_PACKAGE_luci-theme-design=y"
-	"CONFIG_PACKAGE_luci-app-filetransfer=y"
-	"CONFIG_PACKAGE_openssh-sftp-server=y"
-	"CONFIG_PACKAGE_luci-app-frpc=y"
-	"CONFIG_OPKG_USE_CURL=y"
-	"CONFIG_PACKAGE_opkg=y"
-	"CONFIG_USE_APK=n"
-	"CONFIG_PACKAGE_luci-app-tailscale=y"
-	"CONFIG_PACKAGE_luci-app-gecoosac=y"
-	"CONFIG_PACKAGE_usbutils=y"
-	"CONFIG_PACKAGE_luci-app-diskman=y"
-	"CONFIG_PACKAGE_luci-i18n-diskman-zh-cn=y"
-	"CONFIG_PACKAGE_luci-app-autoreboot=y"
-	"CONFIG_PACKAGE_luci-i18n-autoreboot-zh-cn=y"
-	"CONFIG_PACKAGE_luci-app-ddnsto=y"
-	"CONFIG_PACKAGE_ddnsto=y"
-	"CONFIG_PACKAGE_luci-app-store=y"
-	"CONFIG_PACKAGE_luci-app-quickstart"
-	"CONFIG_PACKAGE_luci-app-istorex=y"
-	"CONFIG_PACKAGE_parted=y"
+    "CONFIG_PACKAGE_luci-app-zerotier=y"
+    "CONFIG_PACKAGE_luci-i18n-zerotier-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-adguardhome=y"
+    "CONFIG_PACKAGE_luci-i18n-adguardhome-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-poweroff=y"
+    "CONFIG_PACKAGE_luci-i18n-poweroff-zh-cn=y"
+    "CONFIG_PACKAGE_cpufreq=y"
+    "CONFIG_PACKAGE_luci-app-cpufreq=y"
+    "CONFIG_PACKAGE_luci-i18n-cpufreq-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-ttyd=y"
+    "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
+    "CONFIG_PACKAGE_ttyd=y"
+    "CONFIG_PACKAGE_luci-app-ddns-go=y"
+    "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-argon-config=y"
+    "CONFIG_PACKAGE_nano=y"
+    "CONFIG_BUSYBOX_CONFIG_LSUSB=y"
+    "CONFIG_PACKAGE_luci-app-netspeedtest=y"
+    "CONFIG_COREMARK_OPTIMIZE_O3=y"
+    "CONFIG_COREMARK_ENABLE_MULTITHREADING=y"
+    "CONFIG_COREMARK_NUMBER_OF_THREADS=6"
+    "CONFIG_PACKAGE_luci-app-filetransfer=y"
+    "CONFIG_PACKAGE_openssh-sftp-server=y"
+    "CONFIG_PACKAGE_luci-app-frpc=y"
+    "CONFIG_OPKG_USE_CURL=y"
+    "CONFIG_PACKAGE_opkg=y"
+    "CONFIG_USE_APK=n"
+    "CONFIG_PACKAGE_luci-app-tailscale=y"
+    "CONFIG_PACKAGE_luci-app-gecoosac=y"
+    "CONFIG_PACKAGE_usbutils=y"
+    "CONFIG_PACKAGE_luci-app-diskman=y"
+    "CONFIG_PACKAGE_luci-i18n-diskman-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-autoreboot=y"
+    "CONFIG_PACKAGE_luci-i18n-autoreboot-zh-cn=y"
+    # 打印机
+    "CONFIG_PACKAGE_cups=y"
+    "CONFIG_PACKAGE_cups-bsd=y"
+    "CONFIG_PACKAGE_cups-client=y"
+    "CONFIG_PACKAGE_kmod-usb-printer=y"
+    # iStore & DDNSTO
+    "CONFIG_PACKAGE_luci-app-istore=y"
+    "CONFIG_PACKAGE_ddnsto=y"
+	"CONFIG_PACKAGE_luci-app-quickstart=y"
+    "CONFIG_PACKAGE_luci-app-ddnsto=y"
+    # 运行库
+    "CONFIG_PACKAGE_parted=y"
     "CONFIG_PACKAGE_libparted=y"
     "CONFIG_PACKAGE_fatresize=y"
     "CONFIG_PACKAGE_nikki=y"
@@ -207,12 +204,128 @@ provided_config_lines=(
     "CONFIG_PACKAGE_python3-pysocks=y"
     "CONFIG_PACKAGE_python3-unidecode=y"
     "CONFIG_PACKAGE_python3-light=y"
-	    # 打印机支持 CUPS
-    "CONFIG_PACKAGE_cups=y"
-    "CONFIG_PACKAGE_cups-bsd=y"
-    "CONFIG_PACKAGE_cups-client=y"
-    "CONFIG_PACKAGE_kmod-usb-printer=y"
 )
+
+# ============================================
+# 3. 根据标签追加特定配置
+# ============================================
+if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
+    provided_config_lines+=(
+        "CONFIG_PACKAGE_hostapd-common=n"
+        "CONFIG_PACKAGE_wpad-openssl=n"
+        "CONFIG_PACKAGE_kmod-usb3=y"
+        "CONFIG_PACKAGE_kmod-usb-storage=y"
+        "CONFIG_PACKAGE_kmod-usb-storage-uas=y"
+        "CONFIG_PACKAGE_kmod-fs-ext4=y"
+        "CONFIG_PACKAGE_kmod-fs-exfat=y"
+        "CONFIG_PACKAGE_kmod-fs-ntfs3=y"
+        "CONFIG_PACKAGE_kmod-fs-vfat=y"
+        "CONFIG_PACKAGE_block-mount=y"
+        "CONFIG_PACKAGE_kmod-usb-dwc3=y"
+        "CONFIG_PACKAGE_kmod-usb-dwc3-qcom=y"
+    )
+else
+    provided_config_lines+=(
+        "CONFIG_PACKAGE_kmod-usb-net=y"
+        "CONFIG_PACKAGE_kmod-usb-net-rndis=y"
+        "CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y"
+        "CONFIG_PACKAGE_kmod-usb-acm=y"
+        "CONFIG_PACKAGE_kmod-usb-ehci=y"
+        "CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y"
+        "CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y"
+        "CONFIG_PACKAGE_kmod-usb-net-rtl8152=y"
+        "CONFIG_PACKAGE_kmod-usb-ohci=y"
+        "CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y"
+        "CONFIG_PACKAGE_kmod-usb2=y"
+    )
+fi
+
+if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
+    provided_config_lines+=(
+        "CONFIG_PACKAGE_luci-app-podman=y"
+        "CONFIG_PACKAGE_podman=y"
+        "CONFIG_PACKAGE_iptables-mod-extra=y"
+        "CONFIG_PACKAGE_ip6tables-nft=y"
+        "CONFIG_PACKAGE_iptables-mod-fullconenat=y"
+        "CONFIG_PACKAGE_libip4tc=y"
+        "CONFIG_PACKAGE_libip6tc=y"
+        "CONFIG_PACKAGE_luci-app-passwall=y"
+        "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=n"
+        "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client=n"
+        "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=n"
+        "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=n"
+        "CONFIG_PACKAGE_htop=y"
+        "CONFIG_PACKAGE_tcpdump=y"
+        "CONFIG_PACKAGE_qrencode=y"
+        "CONFIG_PACKAGE_smartmontools-drivedb=y"
+        "CONFIG_PACKAGE_default-settings=y"
+        "CONFIG_PACKAGE_default-settings-chn=y"
+        "CONFIG_PACKAGE_kmod-br-netfilter=y"
+        "CONFIG_PACKAGE_kmod-veth=y"
+        "CONFIG_PACKAGE_luci-app-frps=y"
+        "CONFIG_PACKAGE_luci-app-samba4=y"
+        "CONFIG_PACKAGE_luci-app-quickfile=y"
+    )
+fi
+
+[[ $FIRMWARE_TAG == "IPQ"* ]] && provided_config_lines+=("CONFIG_PACKAGE_sqm-scripts-nss=y")
+
+# ============================================
+# 4. 写入配置并修复格式 (关键步骤)
+# ============================================
+
+# 先清洗 .config：去除所有空行和注释行中的多余空格，防止后续追加出错
+if [ -f .config ]; then
+    sed -i 's/^[[:space:]]*//; s/[[:space:]]*$//' .config
+    sed -i '/^$/d' .config
+fi
+
+# 追加新配置
+for line in "${provided_config_lines[@]}"; do
+    # 确保行首没有空格，且格式严格为 KEY=VALUE
+    clean_line=$(echo "$line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | sed 's/[[:space:]]*=[[:space:]]*/=/g')
+    
+    # 如果配置已存在，先删除旧行
+    key=$(echo "$clean_line" | cut -d '=' -f 1)
+    if [ -f .config ]; then
+        grep -v "^${key}=" .config > .config.tmp 2>/dev/null && mv .config.tmp .config || true
+        grep -v "^# ${key} " .config >> .config.tmp 2>/dev/null && mv .config.tmp .config || true
+    fi
+    
+    # 追加新行
+    echo "$clean_line" >> .config
+done
+
+# ============================================
+# 5. 执行 Feeds 更新和 Defconfig (自动修复格式错误)
+# ============================================
+echo ">>> Updating feeds and fixing config format..."
+./scripts/feeds update -a >/dev/null 2>&1
+./scripts/feeds install -a >/dev/null 2>&1
+
+# 这一步至关重要：make defconfig 会重新解析 .config，
+# 自动移除无效选项，修正格式错误，并补全依赖。
+make defconfig >/dev/null 2>&1
+
+# 验证结果
+echo ">>> Verifying config..."
+if grep -q "CONFIG_PACKAGE_luci-app-istore=y" .config; then
+    echo "✅ iStore enabled"
+else
+    echo "❌ iStore failed"
+fi
+
+if grep -q "CONFIG_PACKAGE_ddnsto=y" .config; then
+    echo "✅ DDNSTO enabled"
+else
+    echo "❌ DDNSTO failed"
+fi
+
+# 检查是否有格式错误残留
+if grep -q "^ " .config || grep -q "^	" .config; then
+    echo "⚠️ Warning: Config file still contains leading spaces/tabs. Cleaning..."
+    sed -i 's/^[[:space:]]*//' .config
+fi
 
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
 
