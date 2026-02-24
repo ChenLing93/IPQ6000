@@ -49,6 +49,21 @@ UPDATE_PACKAGE() {
 	esac
 }
 
+echo ">>> Cloning critical dependencies individually..."
+
+# Nikki Core
+git clone --depth=1 --branch main https://github.com/nikkinikki-org/nikki.git package/nikki 2>/dev/null || \
+git clone --depth=1 https://github.com/kenzok8/openwrt-packages.git package/kopenwrt-packages # 备用源
+
+# 如果上面失败了，尝试从 small-package 单独提取 nikki
+if [ ! -d "package/nikki" ]; then
+    git clone --depth=1 --branch main https://github.com/kenzok8/small-package.git package/small-temp
+    if [ -d "package/small-temp/nikki" ]; then
+        mv package/small-temp/nikki package/nikki
+    fi
+    rm -rf package/small-temp
+fi
+
 # ============================================
 # 3. 基础工具安装
 # ============================================
@@ -65,11 +80,10 @@ UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
 naiveproxy shadowsocks-rust v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
 tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
-luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
+luci-app-passwall smartdns luci-app-smartdns v2dat mosbnb luci-app-mosbnb \
 taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
 luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
-luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
-luci-app-nikki luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
+luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
 
 # ============================================
 # 5. 网络测速工具
@@ -301,6 +315,30 @@ done
 echo ">>> Updating feeds and fixing config format..."
 ./scripts/feeds update -a >/dev/null 2>&1
 ./scripts/feeds install -a >/dev/null 2>&1
+
+echo ">>> Fixing libparted & fatresize dependencies..."
+
+# 1. 安装官方 libparted 和 parted
+./scripts/feeds install libparted parted
+
+# 2. 清理旧缓存
+rm -rf build_dir/target-*/libparted-* build_dir/target-*/fatresize-*
+rm -rf staging_dir/target-*/stamp/.libparted_* staging_dir/target-*/stamp/.fatresize_*
+
+# 3. 强制配置
+# 确保 libparted 开启
+sed -i 's/# CONFIG_PACKAGE_libparted is not set/CONFIG_PACKAGE_libparted=y/' .config
+sed -i 's/# CONFIG_PACKAGE_parted is not set/CONFIG_PACKAGE_parted=y/' .config
+echo "CONFIG_PACKAGE_libparted=y" >> .config
+echo "CONFIG_PACKAGE_parted=y" >> .config
+
+# 4. (可选) 如果仍然报错，暂时放弃 fatresize
+# fatresize 仅用于调整 FAT32 分区，功能较单一。如果 libparted 问题无法解决，可禁用它。
+# 取消下面一行的注释即可禁用
+# sed -i 's/CONFIG_PACKAGE_fatresize=y/# CONFIG_PACKAGE_fatresize is not set/' .config
+# echo "⚠️ WARNING: fatresize disabled to fix build error."
+
+echo ">>> Dependencies fixed."
 
 # 这一步至关重要：make defconfig 会重新解析 .config，
 # 自动移除无效选项，修正格式错误，并补全依赖。
