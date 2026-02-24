@@ -366,6 +366,15 @@ find feeds/libs/mbedtls -name Makefile -exec sed -i 's/TARGET_CFLAGS +=/TARGET_C
 
 # ⚠️ 已禁用 Go 语言自动更新功能，以防止网络波动导致构建失败
 # 如需更新 Go 版本，请手动修改 feeds/packages/lang/golang/golang/Makefile
-echo "Skipping auto Go update to ensure build stability."
+# echo "Skipping auto Go update to ensure build stability."
+# ============================================
+# Golang 编译器更新
+# ============================================
+GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
+GOLANG_BRANCH="25.x"
+if [[ -d ./feeds/packages/lang/golang ]]; then \
+	rm -rf ./feeds/packages/lang/golang
+	git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
+fi
 
 # patch_openwrt_go || exit 1  <-- 已注释
