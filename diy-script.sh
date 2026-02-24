@@ -253,53 +253,72 @@ rm package/kernel/mac80211/patches/nss/subsys/{999-775-wifi-mac80211-Changes-for
 
 [[ $FIRMWARE_TAG == "IPQ"* ]] && provided_config_lines+=("CONFIG_PACKAGE_sqm-scripts-nss=y")
 
-
-# Append configuration lines to .config
+# 将配置项追加到 .config 文件
 for line in "${provided_config_lines[@]}"; do
-    echo "$line" >> .config
+	echo "$line" >> .config
 done
 
-
+# ============================================
+# 16. 内核补丁与设备树修复
+# ============================================
 rm ./target/linux/qualcommax/patches-6.12/0083-v6.11-arm64-dts-qcom-ipq6018-add-sdhci-node.patch
 
-#./scripts/feeds update -a
-#./scripts/feeds install -a
+# 创建 ipq6018-nowifi.dtsi 文件以修复 NOWIFI 版本编译错误
+mkdir -p ./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom
+cat > ./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6018-nowifi.dtsi << 'EOF'
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+#include "ipq6018.dtsi"
 
-#修复文件
+/ {
+	model = "Qualcomm Technologies, Inc. IPQ6018-512M-NOWIFI";
+	compatible = "qcom,ipq6018";
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0x0 0x40000000 0x0 0x20000000>;
+	};
+};
+
+/* 删除 WiFi 相关节点 */
+&wifi0 {
+	status = "disabled";
+};
+
+&wifi1 {
+	status = "disabled";
+};
+EOF
+
+# ============================================
+# 17. 代码修复
+# ============================================
+# 修复文件
 find ./ -name "getifaddr.c" -exec sed -i 's/return 1;/return 0;/g' {} \;
 sed -i '/\/usr\/bin\/zsh/d' package/base-files/files/etc/profile
-
 find ./ -name "cascade.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 find ./ -name "dark.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 find ./ -name "cascade.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 find ./ -name "dark.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 
-#修改ttyd为免密
+# ============================================
+# 18. UCI 默认值设置
+# ============================================
+# 修改ttyd为免密
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" "package/base-files/files/etc/uci-defaults/99_ttyd-nopass"
-
-
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" "package/base-files/files/etc/uci-defaults/99_set_argon_primary"
-install -Dm755 "${GITHUB_WORKSPACE}/scripts/99-distfeeds.conf" "package/emortal/default-settings/files/99-distfeeds.conf"
-sed -i "/define Package\/default-settings\/install/a\\
-\\t\$(INSTALL_DIR) \$(1)/etc\\n\
-\t\$(INSTALL_DATA) ./files/99-distfeeds.conf \$(1)/etc/99-distfeeds.conf\n" "package/emortal/default-settings/Makefile"
-
-sed -i "/exit 0/i\\
-[ -f \'/etc/99-distfeeds.conf\' ] && mv \'/etc/99-distfeeds.conf\' \'/etc/opkg/distfeeds.conf\'\n\
-sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" "package/emortal/default-settings/files/99-default-settings"
-
-#解决 dropbear 配置的 bug
+# 解决 dropbear 配置的 bug
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
-
 if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
-    #解决 nginx 的问题
-    install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_nginx_setup.sh" "package/base-files/files/etc/uci-defaults/99_nginx_setup"
+	# 解决 nginx 的问题
+	install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_nginx_setup.sh" "package/base-files/files/etc/uci-defaults/99_nginx_setup"
 fi
 
-#update golang
+# ============================================
+# 19. Golang 编译器更新
+# ============================================
 GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
 GOLANG_BRANCH="25.x"
-if [[ -d ./feeds/packages/lang/golang ]]; then
-	\rm -rf ./feeds/packages/lang/golang
+if [[ -d ./feeds/packages/lang/golang ]]; then \
+	rm -rf ./feeds/packages/lang/golang
 	git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
 fi
