@@ -405,7 +405,36 @@ if [ -f "$RUST_FILE" ] && [ -f "${GITHUB_WORKSPACE}/scripts/rust-makefile.patch"
 	patch $RUST_FILE ${GITHUB_WORKSPACE}/scripts/rust-makefile.patch
 	echo "Rust has been fixed!"
 fi
+echo "🔧 Patching mbedtls for GCC 14 compatibility..."
 
+MBEDTLS_PATH="package/libs/mbedtls"
+if [ -d "$MBEDTLS_PATH" ]; then
+
+if ! grep -q "PKG_CFLAGS+=-Wno-error" "$MBEDTLS_PATH/Makefile"; then
+        # 在 Makefile 的 "include $(INCLUDE_DIR)/package.mk" 之前插入
+        sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\
+PKG_CFLAGS += -Wno-error=inline-function-failed -Wno-error=incompatible-pointer-types\
+PKG_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0' "$MBEDTLS_PATH/Makefile"
+        echo "✅ mbedtls Makefile patched."
+    else
+        echo "ℹ️  mbedtls Makefile already patched."
+    fi
+    
+    # 方法 2 (备选): 如果上面不行，直接修改源码中的 alignment.h (不推荐，作为最后手段)
+    # 暂时先不执行，看方法 1 是否生效
+else
+    echo "⚠️  mbedtls path not found, skipping patch."
+fi
+
+# 同时也处理 feeds 里的 mbedtls (如果有)
+if [ -d "feeds/packages/libs/mbedtls" ]; then
+     MBEDTLS_FEEDS_PATH="feeds/packages/libs/mbedtls"
+     if ! grep -q "PKG_CFLAGS+=-Wno-error" "$MBEDTLS_FEEDS_PATH/Makefile"; then
+        sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\
+PKG_CFLAGS += -Wno-error=inline-function-failed -Wno-error=incompatible-pointer-types\
+PKG_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0' "$MBEDTLS_FEEDS_PATH/Makefile"
+     fi
+fi
 # Mbedtls 修复
 # [重要] 已禁用手动修改 FORTIFY_SOURCE，防止 GCC 14 下出现内联失败错误
 # mbedtls 3.6.x 在默认配置下通常能正常编译
