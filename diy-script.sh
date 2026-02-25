@@ -390,7 +390,9 @@ sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" "package/emortal/defa
 
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup" 2>/dev/null || echo "⚠️ 99_dropbear_setup.sh not found"
 
-# CMAKE 修复
+# ... (前面的代码保持不变) ...
+
+# CMAKE 修复 (保留这个，很重要)
 if ! grep -q "CMAKE_POLICY_VERSION_MINIMUM" include/cmake.mk; then
   echo 'CMAKE_OPTIONS += -DCMAKE_POLICY_VERSION_MINIMUM=3.5' >> include/cmake.mk
 fi
@@ -405,8 +407,12 @@ if [ -f "$RUST_FILE" ] && [ -f "${GITHUB_WORKSPACE}/scripts/rust-makefile.patch"
 fi
 
 # Mbedtls 修复
-sed -i 's/TARGET_CFLAGS +=/TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 /g' package/libs/mbedtls/Makefile 2>/dev/null
-find feeds/libs/mbedtls -name Makefile -exec sed -i 's/TARGET_CFLAGS +=/TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 /g' {} + 2>/dev/null || true
+# [重要] 已禁用手动修改 FORTIFY_SOURCE，防止 GCC 14 下出现内联失败错误
+# mbedtls 3.6.x 在默认配置下通常能正常编译
+echo "ℹ️  Skipping manual mbedtls FORTIFY patch to prevent inline assembly errors with GCC 14."
+# 原错误代码已注释:
+# sed -i 's/TARGET_CFLAGS +=/TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 /g' package/libs/mbedtls/Makefile 2>/dev/null
+# find feeds/libs/mbedtls -name Makefile -exec sed -i 's/TARGET_CFLAGS +=/TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 /g' {} + 2>/dev/null || true
 
 # ============================================
 # Golang 编译器更新 (固定到 25.x 分支)
