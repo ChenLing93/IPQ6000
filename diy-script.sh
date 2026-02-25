@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 修改默认IP (如果需要，取消下面注释)
-# sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
+sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate
 
 # 安装和更新软件包
 UPDATE_PACKAGE() {
@@ -62,9 +62,7 @@ UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
 # speedtest
 UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
 UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
-
 UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "master"
-
 UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main"
 
 # --- [新增] 安装 DDNSTO 支持 ---
