@@ -379,46 +379,42 @@ if [ -f "$RUST_FILE" ] && [ -f "${GITHUB_WORKSPACE}/scripts/rust-makefile.patch"
 	echo "Rust has been fixed!"
 fi
 
-# ============================================
-# Mbedtls 终极修复 (使用 sed 直接替换，不打补丁)
-# ============================================
-echo "🔧 Applying mbedtls fix via sed (no patch file)..."
+echo "🔧 Aggressively patching mbedtls sha256.c..."
 
 MBEDTLS_MAKEFILE="package/libs/mbedtls/Makefile"
 
 if [ -f "$MBEDTLS_MAKEFILE" ]; then
+    # 我们不在 Build/PreConfig 中做，而是直接在 Makefile 的 Build/Prepare 之后强制执行
+    # 或者更简单：直接修改 Makefile，在编译前执行一个 shell 脚本
+    
     # 备份
     cp "$MBEDTLS_MAKEFILE" "$MBEDTLS_MAKEFILE.bak"
     
-    # 在 Makefile 末尾追加一个 Build/PreConfig 钩子
+    # 定义修复逻辑
     cat >> "$MBEDTLS_MAKEFILE" << 'MAKEFILE_HOOK'
 
-define Build/PreConfig
-	$(call Build/PreConfig/Default)
-	# 强制替换 sha256.c 中的 memset 调用，避开 GCC 14 内联错误
-	find $(PKG_BUILD_DIR) -name "sha256.c" -exec sed -i 's/memset(ctx, 0, sizeof(mbedtls_sha256_context));/__builtin_memset(ctx, 0, sizeof(mbedtls_sha256_context));/g' {} \;
-	echo "✅ mbedtls source code patched via sed."
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	# 在源码解压并打完所有补丁后，立即强制修改 sha256.c
+	# 使用更宽松的正则，匹配任何包含 memset(ctx, 0, sizeof(mbedtls_sha256_context)) 的行
+	find $(PKG_BUILD_DIR) -name "sha256.c" | while read file; do \
+		sed -i 's/memset\s*(\s*ctx\s*,\s*0\s*,\s*sizeof\s*(\s*mbedtls_sha256_context\s*)\s*)/__builtin_memset(ctx, 0, sizeof(mbedtls_sha256_context))/g' "$$file"; \
+		# 如果上面没替换成功，尝试直接替换第 227 行附近的内容 (暴力行号替换)
+		# 但行号可能会变，所以还是依赖内容替换
+		# 再次检查是否替换成功
+		if grep -q "memset(ctx, 0, sizeof(mbedtls_sha256_context));" "$$file"; then \
+			echo "⚠️  Warning: memset still found in $$file, trying alternative replacement..."; \
+			sed -i 's/memset(ctx, 0, sizeof(mbedtls_sha256_context));/__builtin_memset(ctx, 0, sizeof(mbedtls_sha256_context));/g' "$$file"; \
+		fi; \
+	done
+	echo "✅ mbedtls sha256.c patched."
 endef
 
 MAKEFILE_HOOK
 
-    echo "✅ mbedtls Makefile hooked with sed fix."
+    echo "✅ mbedtls Makefile updated with aggressive patch logic."
 else
     echo "❌ mbedtls Makefile not found!"
-fi
-
-# 同样处理 feeds 中的 mbedtls (如果有)
-if [ -d "feeds/packages/libs/mbedtls" ]; then
-    FEEDS_MBEDTLS_MAKEFILE="feeds/packages/libs/mbedtls/Makefile"
-    if [ -f "$FEEDS_MBEDTLS_MAKEFILE" ]; then
-        cat >> "$FEEDS_MBEDTLS_MAKEFILE" << 'MAKEFILE_HOOK'
-define Build/PreConfig
-	$(call Build/PreConfig/Default)
-	find $(PKG_BUILD_DIR) -name "sha256.c" -exec sed -i 's/memset(ctx, 0, sizeof(mbedtls_sha256_context));/__builtin_memset(ctx, 0, sizeof(mbedtls_sha256_context));/g' {} \;
-	echo "✅ Feeds mbedtls patched."
-endef
-MAKEFILE_HOOK
-    fi
 fi
 
 # ============================================
