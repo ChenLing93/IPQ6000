@@ -380,7 +380,45 @@ if [ -f "$RUST_FILE" ] && [ -f "${GITHUB_WORKSPACE}/scripts/rust-makefile.patch"
 fi
 
 # Mbedtls 修复 (跳过强制 FORTIFY 修改，防止 GCC 14 内联错误)
-echo "ℹ️  Skipping manual mbedtls FORTIFY patch to prevent inline assembly errors with GCC 14."
+#echo "ℹ️  Skipping manual mbedtls FORTIFY patch to prevent inline assembly errors with GCC 14."
+
+echo "🔧 Applying aggressive patches for mbedtls 3.6.x on GCC 14..."
+
+MBEDTLS_PATH="package/libs/mbedtls"
+
+if [ -d "$MBEDTLS_PATH" ]; then
+    # 1. 备份原 Makefile
+    cp "$MBEDTLS_PATH/Makefile" "$MBEDTLS_PATH/Makefile.bak"
+
+    # 2. 注入特殊的 CFLAGS 来禁用导致报错的检查和优化冲突
+    # 我们需要在 CMAKE_OPTIONS 中添加特定的标志，或者直接在 Makefile 中覆盖 TARGET_CFLAGS
+    
+    # 方法：在 Makefile 的 "include $(INCLUDE_DIR)/package.mk" 之前插入 PKG_CFLAGS
+    # 这些标志专门用于平息 GCC 14 的过度检查
+    sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\
+PKG_CFLAGS += -Wno-error=incompatible-pointer-types\
+PKG_CFLAGS += -Wno-error=implicit-function-declaration\
+PKG_CFLAGS += -Wno-unterminated-string-initialization\
+PKG_CFLAGS += -fno-inline-functions-called-once\
+PKG_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0' "$MBEDTLS_PATH/Makefile"
+
+    echo "✅ mbedtls Makefile patched with GCC 14 compatibility flags."
+    
+    # 3. (可选) 如果源码中有具体的 CMakeLists.txt 也可以尝试修改，但通常 PKG_CFLAGS 足够穿透
+fi
+
+# 同时处理 feeds 中的 mbedtls (如果有)
+if [ -d "feeds/packages/libs/mbedtls" ]; then
+    MBEDTLS_FEEDS="feeds/packages/libs/mbedtls"
+    sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\
+PKG_CFLAGS += -Wno-error=incompatible-pointer-types\
+PKG_CFLAGS += -Wno-unterminated-string-initialization\
+PKG_CFLAGS += -fno-inline-functions-called-once\
+PKG_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0' "$MBEDTLS_FEEDS/Makefile"
+    echo "✅ Feeds mbedtls patched."
+fi
+
+echo "ℹ️  Proceeding to compile..."
 
 # ============================================
 # Golang 编译器更新 (固定到 25.x 分支)
