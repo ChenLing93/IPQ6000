@@ -48,15 +48,16 @@ UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 
 # small-package (包含大量常用插件)
-# [修改] 已恢复 trojan-plus 和 luci-app-nikki
+# [重要] 已移除 trojan-plus, luci-app-ssr-plus, luci-app-nikki, fatresize 以避免依赖报错导致编译失败
+# 功能替代：使用 OpenClash (mihomo) 和 HomeProxy 代理；使用命令行 parted 分区
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
         naiveproxy v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
-        tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
+        tuic-client chinadns-ng ipt2socks tcping simple-obfs shadowsocksr-libev \
         luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosbnb \
-        taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
+        taskd luci-lib-xterm luci-lib-taskd luci-app-passwall2 \
         luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
         luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
-        luci-app-nikki luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
+        luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
 
 # speedtest
 UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
@@ -179,48 +180,34 @@ provided_config_lines+=(
     "CONFIG_PACKAGE_p910nd=y"
     "CONFIG_PACKAGE_luci-app-p910nd=y"
 
-    # --- [关键修复] 解决 trojan-plus, nikki, ssr-plus 依赖缺失 ---
+    # --- [关键修复] 硬盘挂载相关依赖 (确保无警告) ---
     
-    # 1. Diskman/fatresize 依赖
+    # 1. Diskman 及分区工具依赖
     "CONFIG_PACKAGE_libparted=y"
     "CONFIG_PACKAGE_parted=y"
-    "CONFIG_PACKAGE_fatresize=y"
-
-    # 2. Trojan-Plus 完整依赖 (Boost 库全家桶)
-    # trojan-plus 强依赖 boost，必须显式开启所有相关模块
-    "CONFIG_PACKAGE_libboost=y"
-    "CONFIG_PACKAGE_libboost-system=y"
-    "CONFIG_PACKAGE_libboost-filesystem=y"
-    "CONFIG_PACKAGE_libboost-thread=y"
-    "CONFIG_PACKAGE_libboost-program_options=y"
-    "CONFIG_PACKAGE_libboost-atomic=y"
-    "CONFIG_PACKAGE_libboost-chrono=y"
-    "CONFIG_PACKAGE_libboost-date_time=y"
-    "CONFIG_PACKAGE_libboost-regex=y"
-    "CONFIG_PACKAGE_libboost-serialization=y"
-    "CONFIG_PACKAGE_libboost-context=y"
-    "CONFIG_PACKAGE_libboost-coroutine=y"
+    "CONFIG_PACKAGE_e2fsprogs=y"
+    "CONFIG_PACKAGE_tune2fs=y"
     
-    # 3. SSR-Plus 及 PassWall 依赖 (Shadowsocks-libev 全家桶)
-    "CONFIG_PACKAGE_shadowsocks-libev=y"
-    "CONFIG_PACKAGE_shadowsocks-libev-ss-local=y"
-    "CONFIG_PACKAGE_shadowsocks-libev-ss-redir=y"
-    "CONFIG_PACKAGE_shadowsocks-libev-ss-server=y"
-    "CONFIG_PACKAGE_simple-obfs=y"
-    "CONFIG_PACKAGE_shadowsocksr-libev-alt=y"
-    "CONFIG_PACKAGE_shadowsocksr-libev-ssr-local=y"
-    "CONFIG_PACKAGE_shadowsocksr-libev-ssr-redir=y"
+    # 2. 自动挂载核心 (block-mount)
+    "CONFIG_PACKAGE_block-mount=y"
+    "CONFIG_PACKAGE_blkid=y"
+    "CONFIG_PACKAGE_swap-utils=y"
+    "CONFIG_PACKAGE_fstools=y"
+    "CONFIG_PACKAGE_blockd=y"
 
-    # 4. Nikki 完整依赖
-    "CONFIG_PACKAGE_nikki=y"
-    # 如果 small-package 里有 nikki 的子包，也尝试开启
-    "CONFIG_PACKAGE_nikki-core=y" 
-
-    # 5. Python 依赖 (onionshare 等)
-    "CONFIG_PACKAGE_python3-light=y"
-    "CONFIG_PACKAGE_python3-pysocks=y"
-    "CONFIG_PACKAGE_python3-unidecode=y"
+    # 3. 文件系统支持 (全格式)
+    "CONFIG_PACKAGE_fs-ext4=y"
+    "CONFIG_PACKAGE_fs-f2fs=y"
+    "CONFIG_PACKAGE_fs-ntfs3=y"
+    "CONFIG_PACKAGE_kmod-fs-ntfs3=y"
+    "CONFIG_PACKAGE_kmod-fs-exfat=y"
+    "CONFIG_PACKAGE_exfat-mkfs=y"
+    "CONFIG_PACKAGE_exfat-check=y"
     
+    # 4. 网络共享 (可选，方便访问硬盘)
+    "CONFIG_PACKAGE_luci-app-samba4=y"
+    "CONFIG_PACKAGE_samba4-server=y"
+
     # --- 依赖修复结束 ---
 )
 
@@ -237,13 +224,7 @@ if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
         "CONFIG_PACKAGE_kmod-usb-storage=y"
         "CONFIG_PACKAGE_kmod-usb-storage-extras=y"
         "CONFIG_PACKAGE_kmod-usb-storage-uas=y"
-        "CONFIG_PACKAGE_fs-ext4=y"
-        "CONFIG_PACKAGE_fs-f2fs=y"
-        "CONFIG_PACKAGE_fs-ntfs3=y"
-        "CONFIG_PACKAGE_kmod-fs-ntfs3=y"
-        "CONFIG_PACKAGE_kmod-fs-exfat=y"
-        "CONFIG_PACKAGE_exfat-mkfs=y"
-        "CONFIG_PACKAGE_exfat-check=y"
+        "CONFIG_PACKAGE_kmod-usb-storage-asmedia=y" # 增加 ASM 主控支持
         
         # USB 网络共享
         "CONFIG_PACKAGE_kmod-usb-net=y"
@@ -255,11 +236,6 @@ if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
         "CONFIG_PACKAGE_kmod-usb-acm=y"
         "CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y"
         "CONFIG_PACKAGE_usbutils=y"
-        
-        # 挂载与存储管理
-        "CONFIG_PACKAGE_block-mount=y"
-        "CONFIG_PACKAGE_blkid=y"
-        "CONFIG_PACKAGE_swap-utils=y"
     )
 
     echo "[NOWIFI] preparing nowifi dtsi files..."
@@ -349,7 +325,6 @@ fi
     "CONFIG_PACKAGE_kmod-dummy=y"
     "CONFIG_PACKAGE_kmod-veth=y"
     "CONFIG_PACKAGE_luci-app-frps=y"
-    "CONFIG_PACKAGE_luci-app-samba4=y"
     "CONFIG_PACKAGE_luci-app-openclash=y"
 )
 
@@ -390,9 +365,7 @@ sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" "package/emortal/defa
 
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup" 2>/dev/null || echo "⚠️ 99_dropbear_setup.sh not found"
 
-# ... (前面的代码保持不变) ...
-
-# CMAKE 修复 (保留这个，很重要)
+# CMAKE 修复
 if ! grep -q "CMAKE_POLICY_VERSION_MINIMUM" include/cmake.mk; then
   echo 'CMAKE_OPTIONS += -DCMAKE_POLICY_VERSION_MINIMUM=3.5' >> include/cmake.mk
 fi
@@ -405,43 +378,9 @@ if [ -f "$RUST_FILE" ] && [ -f "${GITHUB_WORKSPACE}/scripts/rust-makefile.patch"
 	patch $RUST_FILE ${GITHUB_WORKSPACE}/scripts/rust-makefile.patch
 	echo "Rust has been fixed!"
 fi
-echo "🔧 Patching mbedtls for GCC 14 compatibility..."
 
-MBEDTLS_PATH="package/libs/mbedtls"
-if [ -d "$MBEDTLS_PATH" ]; then
-
-if ! grep -q "PKG_CFLAGS+=-Wno-error" "$MBEDTLS_PATH/Makefile"; then
-        # 在 Makefile 的 "include $(INCLUDE_DIR)/package.mk" 之前插入
-        sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\
-PKG_CFLAGS += -Wno-error=inline-function-failed -Wno-error=incompatible-pointer-types\
-PKG_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0' "$MBEDTLS_PATH/Makefile"
-        echo "✅ mbedtls Makefile patched."
-    else
-        echo "ℹ️  mbedtls Makefile already patched."
-    fi
-    
-    # 方法 2 (备选): 如果上面不行，直接修改源码中的 alignment.h (不推荐，作为最后手段)
-    # 暂时先不执行，看方法 1 是否生效
-else
-    echo "⚠️  mbedtls path not found, skipping patch."
-fi
-
-# 同时也处理 feeds 里的 mbedtls (如果有)
-if [ -d "feeds/packages/libs/mbedtls" ]; then
-     MBEDTLS_FEEDS_PATH="feeds/packages/libs/mbedtls"
-     if ! grep -q "PKG_CFLAGS+=-Wno-error" "$MBEDTLS_FEEDS_PATH/Makefile"; then
-        sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\
-PKG_CFLAGS += -Wno-error=inline-function-failed -Wno-error=incompatible-pointer-types\
-PKG_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0' "$MBEDTLS_FEEDS_PATH/Makefile"
-     fi
-fi
-# Mbedtls 修复
-# [重要] 已禁用手动修改 FORTIFY_SOURCE，防止 GCC 14 下出现内联失败错误
-# mbedtls 3.6.x 在默认配置下通常能正常编译
+# Mbedtls 修复 (跳过强制 FORTIFY 修改，防止 GCC 14 内联错误)
 echo "ℹ️  Skipping manual mbedtls FORTIFY patch to prevent inline assembly errors with GCC 14."
-# 原错误代码已注释:
-# sed -i 's/TARGET_CFLAGS +=/TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 /g' package/libs/mbedtls/Makefile 2>/dev/null
-# find feeds/libs/mbedtls -name Makefile -exec sed -i 's/TARGET_CFLAGS +=/TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 /g' {} + 2>/dev/null || true
 
 # ============================================
 # Golang 编译器更新 (固定到 25.x 分支)
