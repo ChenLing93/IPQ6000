@@ -380,43 +380,45 @@ fi
 # Mbedtls 修复 (跳过强制 FORTIFY 修改，防止 GCC 14 内联错误)
 #echo "ℹ️  Skipping manual mbedtls FORTIFY patch to prevent inline assembly errors with GCC 14."
 
-echo "🔧 Applying aggressive patches for mbedtls 3.6.x on GCC 14..."
+echo "🔧 Aggressively patching mbedtls to disable strict checks..."
 
 MBEDTLS_PATH="package/libs/mbedtls"
 
 if [ -d "$MBEDTLS_PATH" ]; then
-    # 1. 备份原 Makefile
+    # 1. 查找 CMakeLists.txt
+    CMAKE_FILE="$MBEDTLS_PATH/CMakeLists.txt"
+    
+    # 如果 package 目录下没有 CMakeLists.txt (通常在源码包里)，我们需要在编译时动态修改
+    # OpenWrt 的 mbedtls 通常是一个 Makefile 包装器，真正的 CMakeLists 在 build_dir 里
+    # 但我们可以修改 Makefile 来传递参数给 CMake
+    
+    # 2. 修改 Makefile，注入 CMAKE_OPTIONS
+    # 我们不仅要加 CFLAGS，还要告诉 CMake 不要开启 Warning as Error
+    
+    # 备份
     cp "$MBEDTLS_PATH/Makefile" "$MBEDTLS_PATH/Makefile.bak"
-
-    # 2. 注入特殊的 CFLAGS 来禁用导致报错的检查和优化冲突
-    # 我们需要在 CMAKE_OPTIONS 中添加特定的标志，或者直接在 Makefile 中覆盖 TARGET_CFLAGS
     
-    # 方法：在 Makefile 的 "include $(INCLUDE_DIR)/package.mk" 之前插入 PKG_CFLAGS
-    # 这些标志专门用于平息 GCC 14 的过度检查
+    # 插入配置：强制关闭 CMAKE 的 Warning as Error，并添加宽松的 CFLAGS
+    # 注意：使用 PKG_CMAKE_OPTIONS 而不是 PKG_CFLAGS，这对 CMake 项目更有效
     sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\
-PKG_CFLAGS += -Wno-error=incompatible-pointer-types\
-PKG_CFLAGS += -Wno-error=implicit-function-declaration\
-PKG_CFLAGS += -Wno-unterminated-string-initialization\
-PKG_CFLAGS += -fno-inline-functions-called-once\
-PKG_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0' "$MBEDTLS_PATH/Makefile"
+PKG_CMAKE_OPTIONS += -DENABLE_PROGRAMS=OFF \
+PKG_CMAKE_OPTIONS += -DENABLE_TESTING=OFF \
+PKG_CMAKE_OPTIONS += -DCMAKE_C_FLAGS="-Wno-error -Wno-unused-result -fno-inline"' "$MBEDTLS_PATH/Makefile"
 
-    echo "✅ mbedtls Makefile patched with GCC 14 compatibility flags."
+    echo "✅ mbedtls Makefile patched with CMAKE_OPTIONS."
     
-    # 3. (可选) 如果源码中有具体的 CMakeLists.txt 也可以尝试修改，但通常 PKG_CFLAGS 足够穿透
+    # 3. 【关键】如果源码包里有 patches 目录，我们可以放一个补丁去修改 CMakeLists.txt
+    # 但为了简单，我们直接尝试修改 feeds 里的 mbedtls (如果有)
+    if [ -d "feeds/packages/libs/mbedtls" ]; then
+        FEEDS_MBEDTLS="feeds/packages/libs/mbedtls"
+        sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\
+PKG_CMAKE_OPTIONS += -DENABLE_PROGRAMS=OFF \
+PKG_CMAKE_OPTIONS += -DENABLE_TESTING=OFF \
+PKG_CMAKE_OPTIONS += -DCMAKE_C_FLAGS="-Wno-error -fno-inline"' "$FEEDS_MBEDTLS/Makefile"
+    fi
 fi
 
-# 同时处理 feeds 中的 mbedtls (如果有)
-if [ -d "feeds/packages/libs/mbedtls" ]; then
-    MBEDTLS_FEEDS="feeds/packages/libs/mbedtls"
-    sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\
-PKG_CFLAGS += -Wno-error=incompatible-pointer-types\
-PKG_CFLAGS += -Wno-unterminated-string-initialization\
-PKG_CFLAGS += -fno-inline-functions-called-once\
-PKG_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0' "$MBEDTLS_FEEDS/Makefile"
-    echo "✅ Feeds mbedtls patched."
-fi
-
-echo "ℹ️  Proceeding to compile..."
+echo "⚠️  If this fails, the only remaining solution is to switch mbedtls version in feeds."
 
 # ============================================
 # Golang 编译器更新 (固定到 25.x 分支)
