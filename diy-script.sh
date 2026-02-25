@@ -379,90 +379,47 @@ if [ -f "$RUST_FILE" ] && [ -f "${GITHUB_WORKSPACE}/scripts/rust-makefile.patch"
 	echo "Rust has been fixed!"
 fi
 
-echo "🔧 Patching mbedtls source code directly to fix memset inline error..."
-
-# 目标文件路径 (在 build_dir 中，但我们在编译前无法确定具体路径，因为还没编译)
-# 所以我们需要修改 package/libs/mbedtls 中的源码，或者使用 OpenWrt 的 patch 机制
-
-# 方法：在 package/libs/mbedtls/patches 下创建一个补丁，或者直接修改 Makefile 在编译前打补丁
-# 最可靠的方法：利用 OpenWrt 的 patch 目录
-
-MBEDTLS_PATCH_DIR="package/libs/mbedtls/patches"
-mkdir -p "$MBEDTLS_PATCH_DIR"
-
-# 创建补丁文件 999-fix-gcc14-memset-inline.patch
-cat > "$MBEDTLS_PATCH_DIR/999-fix-gcc14-memset-inline.patch" << 'EOF'
---- a/library/sha256.c
-+++ b/library/sha256.c
-@@ -224,7 +224,8 @@ void mbedtls_sha256_init(mbedtls_sha256_context *ctx)
- {
-     memset(ctx, 0, sizeof(mbedtls_sha256_context));
- }
- 
- // 强制不让编译器内联 memset，避免 GCC 14 + Musl 的目标选项冲突
- // 通过在调用前添加 volatile 或拆分逻辑来绕过检查
- // 这里我们简单地将 memset 包裹在一个内联函数中，并标记为 noinline
-+__attribute__((noinline)) static void safe_memset(void *s, int c, size_t n) { memset(s, c, n); }
- 
- void mbedtls_sha256_init(mbedtls_sha256_context *ctx)
- {
--    memset(ctx, 0, sizeof(mbedtls_sha256_context));
-+    safe_memset(ctx, 0, sizeof(mbedtls_sha256_context));
- }
-EOF
-
-# 注意：上面的补丁格式可能因为上下文不匹配而失败。
-# 更简单粗暴的方法：直接编写一个脚本，在编译前查找并替换文件内容。
-
-# 【推荐方法】使用 sed 在编译过程中动态修改 build_dir 中的文件
-# 但这需要在 Makefile 中 hook。
-# 最简单的方法：直接修改 package/libs/mbedtls/Makefile，在编译前执行 sed
+# ============================================
+# Mbedtls 终极修复 (使用 sed 直接替换，不打补丁)
+# ============================================
+echo "🔧 Applying mbedtls fix via sed (no patch file)..."
 
 MBEDTLS_MAKEFILE="package/libs/mbedtls/Makefile"
 
 if [ -f "$MBEDTLS_MAKEFILE" ]; then
-    # 在 Build/Configure 或 Build/Compile 之前插入 sed 命令
-    # 我们hook到 Build/Prepare 之后
-    
     # 备份
     cp "$MBEDTLS_MAKEFILE" "$MBEDTLS_MAKEFILE.bak"
     
-    # 定义一个 PostPatch 钩子或者直接在 Build/Compile 前执行
-    # OpenWrt 的 package Makefile 允许定义 Build/PreConfig 或类似钩子
-    # 我们直接修改 Build/Compile 依赖
-    
-    cat >> "$MBEDTLS_MAKEFILE" << 'MAKEFILE_EOF'
+    # 在 Makefile 末尾追加一个 Build/PreConfig 钩子
+    cat >> "$MBEDTLS_MAKEFILE" << 'MAKEFILE_HOOK'
 
 define Build/PreConfig
 	$(call Build/PreConfig/Default)
-	# 强制修复 sha256.c 中的 memset 内联问题
+	# 强制替换 sha256.c 中的 memset 调用，避开 GCC 14 内联错误
 	find $(PKG_BUILD_DIR) -name "sha256.c" -exec sed -i 's/memset(ctx, 0, sizeof(mbedtls_sha256_context));/__builtin_memset(ctx, 0, sizeof(mbedtls_sha256_context));/g' {} \;
-	# 或者使用 volatile 指针欺骗编译器
-	# find $(PKG_BUILD_DIR) -name "sha256.c" -exec sed -i 's/memset(ctx, 0, sizeof(mbedtls_sha256_context));/{ volatile mbedtls_sha256_context *vctx = ctx; memset((void *)vctx, 0, sizeof(mbedtls_sha256_context)); }/g' {} \;
+	echo "✅ mbedtls source code patched via sed."
 endef
 
-MAKEFILE_EOF
+MAKEFILE_HOOK
 
-    echo "✅ mbedtls Makefile hooked to patch sha256.c during build."
+    echo "✅ mbedtls Makefile hooked with sed fix."
 else
     echo "❌ mbedtls Makefile not found!"
 fi
 
-# 同时处理 feeds 中的 mbedtls
+# 同样处理 feeds 中的 mbedtls (如果有)
 if [ -d "feeds/packages/libs/mbedtls" ]; then
     FEEDS_MBEDTLS_MAKEFILE="feeds/packages/libs/mbedtls/Makefile"
-    cat >> "$FEEDS_MBEDTLS_MAKEFILE" << 'MAKEFILE_EOF'
-
+    if [ -f "$FEEDS_MBEDTLS_MAKEFILE" ]; then
+        cat >> "$FEEDS_MBEDTLS_MAKEFILE" << 'MAKEFILE_HOOK'
 define Build/PreConfig
 	$(call Build/PreConfig/Default)
 	find $(PKG_BUILD_DIR) -name "sha256.c" -exec sed -i 's/memset(ctx, 0, sizeof(mbedtls_sha256_context));/__builtin_memset(ctx, 0, sizeof(mbedtls_sha256_context));/g' {} \;
+	echo "✅ Feeds mbedtls patched."
 endef
-
-MAKEFILE_EOF
-    echo "✅ Feeds mbedtls Makefile hooked."
+MAKEFILE_HOOK
+    fi
 fi
-
-echo "💡 The patch replaces memset with __builtin_memset to bypass inline checks."
 
 # ============================================
 # Golang 编译器更新 (固定到 25.x 分支)
