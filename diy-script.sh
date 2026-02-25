@@ -3,7 +3,7 @@
 # 修改默认IP (如果需要，取消下面注释)
 sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate
 
-git config --global url."https://mirrors.tuna.tsinghua.edu.cn/git/openwrt/".insteadOf "https://git.openwrt.org/"
+#git config --global url."https://mirrors.tuna.tsinghua.edu.cn/git/openwrt/".insteadOf "https://git.openwrt.org/"
 
 # 安装和更新软件包
 UPDATE_PACKAGE() {
