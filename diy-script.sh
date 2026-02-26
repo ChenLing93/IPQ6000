@@ -1,126 +1,386 @@
 #!/bin/bash
+# ============================================
+# OpenWrt IPQ6018 DIY 自动配置脚本
+# 平台: Qualcomm IPQ6018 (NOWIFI/EMMC 版本)
+# 内核: 6.12
+# ============================================
 
-# 修改默认IP
-# sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
+# 1. 修改默认 IP 地址
+#sed -i 's/192.168.5.1/10.0.0.1/g' package/base-files/files/bin/config_generate
+sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate
+sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/etc/config/network
 
-# 更改默认 Shell 为 zsh
-# sed -i 's/\/bin\/ash/\/usr\/bin\/zsh/g' package/base-files/files/etc/passwd
+# 2. 软件包更新函数定义
+UPDATE_PACKAGE() {
+	local PKG_NAME=$1
+	local PKG_REPO=$2
+	local PKG_BRANCH=$3
+	local PKG_SPECIAL=$4
 
-# TTYD 免登录
-# sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
+	# 清理旧的包 - 删除 feeds 中已存在的同名包
+	read -ra PKG_NAMES <<< "$PKG_NAME"
+	for NAME in "${PKG_NAMES[@]}"; do
+		rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname "*$NAME*" -prune)
+	done
 
-# 移除要替换的包
-rm -rf feeds/packages/net/mosdns
-rm -rf feeds/packages/net/msd_lite
-rm -rf feeds/packages/net/smartdns
-rm -rf feeds/luci/themes/luci-theme-argon
-rm -rf feeds/luci/themes/luci-theme-netgear
-rm -rf feeds/luci/applications/luci-app-mosdns
-rm -rf feeds/luci/applications/luci-app-netdata
-rm -rf feeds/luci/applications/luci-app-serverchan
+	# 克隆仓库 - 从 GitHub 获取软件包源码
+	if [[ $PKG_REPO == http* ]]; then
+		local REPO_NAME=$(echo $PKG_REPO | awk -F '/' '{gsub(/\.git$/, "", $NF); print $NF}')
+		git clone --depth=1 --single-branch --branch $PKG_BRANCH "$PKG_REPO" package/$REPO_NAME
+	else
+		local REPO_NAME=$(echo $PKG_REPO | cut -d '/' -f 2)
+		git clone --depth=1 --single-branch --branch $PKG_BRANCH "https://github.com/$PKG_REPO.git" package/$REPO_NAME
+	fi
 
-# Git稀疏克隆，只克隆指定目录到本地
-function git_sparse_clone() {
-  branch="$1" repourl="$2" && shift 2
-  git clone --depth=1 -b $branch --single-branch --filter=blob:none --sparse $repourl
-  repodir=$(echo $repourl | awk -F '/' '{print $(NF)}')
-  cd $repodir && git sparse-checkout set $@
-  mv -f $@ ../package
-  cd .. && rm -rf $repodir
+	# 根据 PKG_SPECIAL 处理包
+	case "$PKG_SPECIAL" in
+		"pkg")
+			# pkg 模式: 从仓库中提取多个子包到 package 根目录
+			for NAME in "${PKG_NAMES[@]}"; do
+				echo "moving $NAME"
+				cp -rf $(find ./package/$REPO_NAME/*/ -maxdepth 3 -type d -iname "*$NAME*" -prune) ./package/
+			done
+			rm -rf ./package/$REPO_NAME/
+			;;
+		"name")
+			# name 模式: 重命名仓库目录为指定包名
+			mv -f ./package/$REPO_NAME ./package/$PKG_NAME
+			;;
+	esac
 }
 
-# 添加额外插件
-git clone --depth=1 https://github.com/kongfl888/luci-app-adguardhome package/luci-app-adguardhome
-git clone --depth=1 -b openwrt-18.06 https://github.com/tty228/luci-app-wechatpush package/luci-app-serverchan
-git clone --depth=1 https://github.com/ilxp/luci-app-ikoolproxy package/luci-app-ikoolproxy
-git clone --depth=1 https://github.com/esirplayground/luci-app-poweroff package/luci-app-poweroff
-git clone --depth=1 https://github.com/destan19/OpenAppFilter package/OpenAppFilter
-git clone --depth=1 https://github.com/Jason6111/luci-app-netdata package/luci-app-netdata
-git_sparse_clone main https://github.com/Lienol/openwrt-package luci-app-filebrowser luci-app-ssr-mudb-server
-git_sparse_clone openwrt-18.06 https://github.com/immortalwrt/luci applications/luci-app-eqos
-# git_sparse_clone master https://github.com/syb999/openwrt-19.07.1 package/network/services/msd_lite
+# ============================================
+# 3. 基础工具安装
+# ============================================
+UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master"
+UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
+UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main"
+#UPDATE_PACKAGE "luci-app-homeproxy" "immortalwrt/homeproxy" "master"
+#UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main"
+UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 
-# 科学上网插件
-#git clone --depth=1 -b main https://github.com/fw876/helloworld package/luci-app-ssr-plus
-#git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages package/openwrt-passwall
-#git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall package/luci-app-passwall
-#git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2 package/luci-app-passwall2
-#git_sparse_clone master https://github.com/vernesong/OpenClash luci-app-openclash
+# ============================================
+# 4. 科学上网工具集
+# ============================================
+UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
+naiveproxy shadowsocks-rust v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
+tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
+luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
+taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
+luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
+luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
+luci-app-nikki luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
 
-# Themes
-git clone --depth=1 -b 18.06 https://github.com/kiddin9/luci-theme-edge package/luci-theme-edge
-git clone --depth=1 -b 18.06 https://github.com/jerrykuku/luci-theme-argon package/luci-theme-argon
-git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config package/luci-app-argon-config
-git clone --depth=1 https://github.com/xiaoqingfengATGH/luci-theme-infinityfreedom package/luci-theme-infinityfreedom
-git_sparse_clone main https://github.com/haiibo/packages luci-theme-atmaterial luci-theme-opentomcat luci-theme-netgear
+# ============================================
+# 5. 网络测速工具
+# ============================================
+UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
+UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
+#UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "master"
 
-# 更改 Argon 主题背景
-cp -f $GITHUB_WORKSPACE/images/bg1.jpg package/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
+# ============================================
+# 6. 容器与文件工具
+# ============================================
+UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
+UPDATE_PACKAGE "openwrt-podman" "https://github.com/breeze303/openwrt-podman" "main"
+UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main"
+sed -i 's|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-$(ARCH_PACKAGES) $(1)/usr/bin/quickfile|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-aarch64_generic $(1)/usr/bin/quickfile|' package/luci-app-quickfile/quickfile/Makefile
 
-# 晶晨宝盒
-git_sparse_clone main https://github.com/ophub/luci-app-amlogic luci-app-amlogic
-sed -i "s|firmware_repo.*|firmware_repo 'https://github.com/haiibo/OpenWrt'|g" package/luci-app-amlogic/root/etc/config/amlogic
-# sed -i "s|kernel_path.*|kernel_path 'https://github.com/ophub/kernel'|g" package/luci-app-amlogic/root/etc/config/amlogic
-sed -i "s|ARMv8|ARMv8_PLUS|g" package/luci-app-amlogic/root/etc/config/amlogic
+# ============================================
+# 7. 磁盘管理工具
+# ============================================
+rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname luci-app-diskman -prune)
+rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname parted -prune)
+mkdir -p package/luci-app-diskman && \
+wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/applications/luci-app-diskman/Makefile -O package/luci-app-diskman/Makefile
+sed -i 's/fs-ntfs /fs-ntfs3 /g' package/luci-app-diskman/Makefile
+sed -i '/ntfs-3g-utils /d' package/luci-app-diskman/Makefile
+mkdir -p package/parted && \
+wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O package/parted/Makefile
 
-# SmartDNS
-git clone --depth=1 -b lede https://github.com/pymumu/luci-app-smartdns package/luci-app-smartdns
-git clone --depth=1 https://github.com/pymumu/openwrt-smartdns package/smartdns
+# ============================================
+# 8. 服务工具
+# ============================================
+UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master"
+UPDATE_PACKAGE "ddnsto" "kenzok8/openwrt-packages" "master" "pkg"
+UPDATE_PACKAGE "cups" "https://github.com/op4packages/openwrt-cups.git" "master" "pkg"
+UPDATE_PACKAGE "istore" "linkease/istore" "main"
 
-# msd_lite
-git clone --depth=1 https://github.com/ximiTech/luci-app-msd_lite package/luci-app-msd_lite
-git clone --depth=1 https://github.com/ximiTech/msd_lite package/msd_lite
+# ============================================
+# 9. 5G 调制解调器工具
+# ============================================
+#UPDATE_PACKAGE "luci-app-qmodem luci-app-qmodem-sms luci-app-qmodem-mwan" "FUjr/QModem" "main" "pkg"
+UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main" "name"
 
-# MosDNS
-git clone --depth=1 https://github.com/sbwml/luci-app-mosdns package/luci-app-mosdns
+# ============================================
+# 10. PassWall 代理工具
+# ============================================
+UPDATE_PACKAGE "luci-app-passwall" "Openwrt-Passwall/openwrt-passwall" "main"
+UPDATE_PACKAGE "xray-core v2ray-geodata v2ray-geosite sing-box chinadns-ng dns2socks hysteria ipt2socks naiveproxy shadowsocks-libev shadowsocks-rust shadowsocksr-libev simple-obfs tcping trojan-plus tuic-client v2ray-plugin xray-plugin geoview shadow-tls" "Openwrt-Passwall/openwrt-passwall-packages" "main" "pkg"
 
-# Alist
-git clone --depth=1 https://github.com/sbwml/luci-app-alist package/luci-app-alist
+# ============================================
+# 11. 移远 5G 拨号工具
+# ============================================
+UPDATE_PACKAGE "quectel-CM-5G" "mdsdtech/5G-Modem-Packages" "main" "pkg"
 
-# DDNS.to
-git_sparse_clone main https://github.com/linkease/nas-packages-luci luci/luci-app-ddnsto
-git_sparse_clone master https://github.com/linkease/nas-packages network/services/ddnsto
+# ============================================
+# 12. 配置清理 - 删除不需要的软件包
+# ============================================
+keywords_to_delete=(
+	"xiaomi_ax3600"
+	"xiaomi_ax9000"
+	"xiaomi_ax1800"
+	"glinet"
+	"jdcloud_ax6600"
+	"mr7350"
+	"uugamebooster"
+	"luci-app-wol"
+	"luci-i18n-wol-zh-cn"
+	"CONFIG_TARGET_INITRAMFS"
+	"ddns"
+	"mihomo"
+	"kucat"
+	"bootstrap"
+	"vlmcsd"
+	"luci-app-vlmcsd"
+)
+[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd")
+[[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "disk")
+[[ $FIRMWARE_TAG == *"EMMC"* ]] && keywords_to_delete+=("cmiot_ax18" "qihoo_v6" "redmi_ax5" "zn_m2")
 
-# iStore
-git_sparse_clone main https://github.com/linkease/istore-ui app-store-ui
-git_sparse_clone main https://github.com/linkease/istore luci
+for keyword in "${keywords_to_delete[@]}"; do
+	sed -i "/$keyword/d" ./.config
+done
 
-# 在线用户
-git_sparse_clone main https://github.com/haiibo/packages luci-app-onliner
-sed -i '$i uci set nlbwmon.@nlbwmon[0].refresh_interval=2s' package/lean/default-settings/files/zzz-default-settings
-sed -i '$i uci commit nlbwmon' package/lean/default-settings/files/zzz-default-settings
-chmod 755 package/luci-app-onliner/root/usr/share/onliner/setnlbw.sh
+# ============================================
+# 13. 软件包配置项 (写入 .config)
+# ============================================
+provided_config_lines=(
+	"CONFIG_PACKAGE_luci-app-zerotier=y"
+	"CONFIG_PACKAGE_luci-i18n-zerotier-zh-cn=y"
+	# "CONFIG_PACKAGE_luci-app-adguardhome=y"
+	# "CONFIG_PACKAGE_luci-i18n-adguardhome-zh-cn=y"
+	"CONFIG_PACKAGE_luci-app-poweroff=y"
+	"CONFIG_PACKAGE_luci-i18n-poweroff-zh-cn=y"
+	"CONFIG_PACKAGE_cpufreq=y"
+	"CONFIG_PACKAGE_luci-app-cpufreq=y"
+	"CONFIG_PACKAGE_luci-i18n-cpufreq-zh-cn=y"
+	"CONFIG_PACKAGE_luci-app-ttyd=y"
+	"CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
+	"CONFIG_PACKAGE_ttyd=y"
+	#"CONFIG_PACKAGE_luci-app-homeproxy=y"
+	#"CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
+	#"CONFIG_PACKAGE_luci-app-ddns-go=y"
+	#"CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
+	"CONFIG_PACKAGE_luci-app-argon-config=y"
+	"CONFIG_PACKAGE_nano=y"
+	"CONFIG_BUSYBOX_CONFIG_LSUSB=y"
+	"CONFIG_PACKAGE_luci-app-netspeedtest=y"
+	"CONFIG_COREMARK_OPTIMIZE_O3=y"
+	"CONFIG_COREMARK_ENABLE_MULTITHREADING=y"
+	"CONFIG_COREMARK_NUMBER_OF_THREADS=6"
+	"CONFIG_PACKAGE_luci-theme-design=y"
+	"CONFIG_PACKAGE_luci-app-filetransfer=y"
+	"CONFIG_PACKAGE_openssh-sftp-server=y"
+	"CONFIG_PACKAGE_luci-app-frpc=y"
+	"CONFIG_OPKG_USE_CURL=y"
+	"CONFIG_PACKAGE_opkg=y"
+	"CONFIG_USE_APK=n"
+	"CONFIG_PACKAGE_luci-app-tailscale=y"
+	"CONFIG_PACKAGE_luci-app-gecoosac=y"
+	"CONFIG_PACKAGE_usbutils=y"
+	"CONFIG_PACKAGE_luci-app-diskman=y"
+	"CONFIG_PACKAGE_luci-i18n-diskman-zh-cn=y"
+	"CONFIG_PACKAGE_luci-app-autoreboot=y"
+	"CONFIG_PACKAGE_luci-i18n-autoreboot-zh-cn=y"
+	"CONFIG_PACKAGE_luci-app-ddnsto=y"
+	"CONFIG_PACKAGE_ddnsto=y"
+	"CONFIG_PACKAGE_luci-app-store=y"
+	"CONFIG_PACKAGE_luci-app-quickstart"
+	"CONFIG_PACKAGE_luci-app-istorex=y"
+	"CONFIG_PACKAGE_parted=y"
+    "CONFIG_PACKAGE_libparted=y"
+    "CONFIG_PACKAGE_fatresize=y"
+    "CONFIG_PACKAGE_nikki=y"
+    "CONFIG_PACKAGE_luci-app-nikki=y"
+    "CONFIG_PACKAGE_python3=y"
+    "CONFIG_PACKAGE_python3-pysocks=y"
+    "CONFIG_PACKAGE_python3-unidecode=y"
+    "CONFIG_PACKAGE_python3-light=y"
+	    # 打印机支持 CUPS
+    "CONFIG_PACKAGE_cups=y"
+    "CONFIG_PACKAGE_cups-bsd=y"
+    "CONFIG_PACKAGE_cups-client=y"
+    "CONFIG_PACKAGE_kmod-usb-printer=y"
+)
 
-# x86 型号只显示 CPU 型号
-sed -i 's/${g}.*/${a}${b}${c}${d}${e}${f}${hydrid}/g' package/lean/autocore/files/x86/autocore
+DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
 
-# 修改本地时间格式
-sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/*/index.htm
+# ============================================
+# 14. NOWIFI 版本专属配置
+# ============================================
+if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
+	provided_config_lines+=(
+		"CONFIG_PACKAGE_hostapd-common=n"
+		"CONFIG_PACKAGE_wpad-openssl=n"
+		# USB 3.0 支持
+		"CONFIG_PACKAGE_kmod-usb3=y"
+		"CONFIG_PACKAGE_kmod-usb-storage=y"
+		"CONFIG_PACKAGE_kmod-usb-storage-uas=y"
+		"CONFIG_PACKAGE_kmod-fs-ext4=y"
+		"CONFIG_PACKAGE_kmod-fs-exfat=y"
+		"CONFIG_PACKAGE_kmod-fs-ntfs3=y"
+		"CONFIG_PACKAGE_kmod-fs-vfat=y"
+		"CONFIG_PACKAGE_cups=y"
+		"CONFIG_PACKAGE_cups-bsd=y"
+		"CONFIG_PACKAGE_cups-client=y"
+		"CONFIG_PACKAGE_kmod-usb-printer=y"
+	)
+else
+	provided_config_lines+=(
+		"CONFIG_PACKAGE_kmod-usb-net=y"
+		"CONFIG_PACKAGE_kmod-usb-net-rndis=y"
+		"CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y"
+		"CONFIG_PACKAGE_usbutils=y"
+		"CONFIG_PACKAGE_kmod-usb-acm=y"
+		"CONFIG_PACKAGE_kmod-usb-ehci=y"
+		"CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y"
+		"CONFIG_PACKAGE_kmod-usb-net-rndis=y"
+		"CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y"
+		"CONFIG_PACKAGE_kmod-usb-net-rtl8152=y"
+		"CONFIG_PACKAGE_kmod-usb-net-sierrawireless=y"
+		"CONFIG_PACKAGE_kmod-usb-ohci=y"
+		"CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y"
+		"CONFIG_PACKAGE_kmod-usb-storage=y"
+		"CONFIG_PACKAGE_kmod-usb2=y"
+	)
+fi
 
-# 修改版本为编译日期
-date_version=$(date +"%y.%m.%d")
-orig_version=$(cat "package/lean/default-settings/files/zzz-default-settings" | grep DISTRIB_REVISION= | awk -F "'" '{print $2}')
-sed -i "s/${orig_version}/R${date_version} by Haiibo/g" package/lean/default-settings/files/zzz-default-settings
+# ============================================
+# 15. EMMC 版本额外配置
+# ============================================
+[[ $FIRMWARE_TAG == *"EMMC"* ]] && provided_config_lines+=(
+	"CONFIG_PACKAGE_luci-app-podman=y"
+	"CONFIG_PACKAGE_podman=y"
+	"CONFIG_PACKAGE_luci-app-openlist2=y"
+	"CONFIG_PACKAGE_luci-i18n-openlist2-zh-cn=y"
+	"CONFIG_PACKAGE_luci-app-autoreboot=y"
+	"CONFIG_PACKAGE_luci-i18n-autoreboot-zh-cn=y"
+	# 打印机支持 CUPS
+	"CONFIG_PACKAGE_cups=y"
+	"CONFIG_PACKAGE_cups-bsd=y"
+	"CONFIG_PACKAGE_cups-client=y"
+	"CONFIG_PACKAGE_kmod-usb-printer=y"
+	"CONFIG_PACKAGE_iptables-mod-extra=y"
+	"CONFIG_PACKAGE_ip6tables-nft=y"
+	"CONFIG_PACKAGE_ip6tables-mod-fullconenat=y"
+	"CONFIG_PACKAGE_iptables-mod-fullconenat=y"
+	"CONFIG_PACKAGE_libip4tc=y"
+	"CONFIG_PACKAGE_libip6tc=y"
+	"CONFIG_PACKAGE_luci-app-passwall=y"
+	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=n"
+	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server=n"
+	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client=n"
+	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client=n"
+	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs=n"
+	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y"
+	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=n"
+	"CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin=y"
+	"CONFIG_PACKAGE_htop=y"
+	"CONFIG_PACKAGE_tcpdump=y"
+	"CONFIG_PACKAGE_openssl-util=y"
+	"CONFIG_PACKAGE_qrencode=y"
+	"CONFIG_PACKAGE_smartmontools-drivedb=y"
+	"CONFIG_PACKAGE_usbutils=y"
+	"CONFIG_PACKAGE_default-settings=y"
+	"CONFIG_PACKAGE_default-settings-chn=y"
+	"CONFIG_PACKAGE_iptables-mod-conntrack-extra=y"
+	"CONFIG_PACKAGE_kmod-br-netfilter=y"
+	"CONFIG_PACKAGE_kmod-ip6tables=y"
+	"CONFIG_PACKAGE_kmod-ipt-conntrack=y"
+	"CONFIG_PACKAGE_kmod-ipt-extra=y"
+	"CONFIG_PACKAGE_kmod-ipt-nat=y"
+	"CONFIG_PACKAGE_kmod-ipt-nat6=y"
+	"CONFIG_PACKAGE_kmod-ipt-physdev=y"
+	"CONFIG_PACKAGE_kmod-nf-ipt6=y"
+	"CONFIG_PACKAGE_kmod-nf-ipvs=y"
+	"CONFIG_PACKAGE_kmod-nf-nat6=y"
+	"CONFIG_PACKAGE_kmod-dummy=y"
+	"CONFIG_PACKAGE_kmod-veth=y"
+	"CONFIG_PACKAGE_luci-app-frps=y"
+	"CONFIG_PACKAGE_luci-app-samba4=y"
+	"CONFIG_PACKAGE_luci-app-openclash=y"
+	"CONFIG_PACKAGE_luci-app-quickfile=y"
+)
 
-# 修复 hostapd 报错
-cp -f $GITHUB_WORKSPACE/scripts/011-fix-mbo-modules-build.patch package/network/services/hostapd/patches/011-fix-mbo-modules-build.patch
+[[ $FIRMWARE_TAG == "IPQ"* ]] && provided_config_lines+=("CONFIG_PACKAGE_sqm-scripts-nss=y")
 
-# 修复 armv8 设备 xfsprogs 报错
-sed -i 's/TARGET_CFLAGS.*/TARGET_CFLAGS += -DHAVE_MAP_SYNC -D_LARGEFILE64_SOURCE/g' feeds/packages/utils/xfsprogs/Makefile
+# 将配置项追加到 .config 文件
+for line in "${provided_config_lines[@]}"; do
+	echo "$line" >> .config
+done
 
-# 修改 Makefile
-find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/..\/..\/luci.mk/$(TOPDIR)\/feeds\/luci\/luci.mk/g' {}
-find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/..\/..\/lang\/golang\/golang-package.mk/$(TOPDIR)\/feeds\/packages\/lang\/golang\/golang-package.mk/g' {}
-find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/PKG_SOURCE_URL:=@GHREPO/PKG_SOURCE_URL:=https:\/\/github.com/g' {}
-find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/PKG_SOURCE_URL:=@GHCODELOAD/PKG_SOURCE_URL:=https:\/\/codeload.github.com/g' {}
+# ============================================
+# 16. 内核补丁与设备树修复
+# ============================================
+rm ./target/linux/qualcommax/patches-6.12/0083-v6.11-arm64-dts-qcom-ipq6018-add-sdhci-node.patch
 
-# 取消主题默认设置
-find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/set luci.main.mediaurlbase/d' {} \;
+# 创建 ipq6018-nowifi.dtsi 文件以修复 NOWIFI 版本编译错误
+mkdir -p ./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom
+cat > ./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6018-nowifi.dtsi << 'EOF'
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+#include "ipq6018.dtsi"
 
-# 调整 V2ray服务器 到 VPN 菜单
-# sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/controller/*.lua
-# sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/model/cbi/v2ray_server/*.lua
-# sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/view/v2ray_server/*.htm
+/ {
+	model = "Qualcomm Technologies, Inc. IPQ6018-512M-NOWIFI";
+	compatible = "qcom,ipq6018";
 
-./scripts/feeds update -a
-./scripts/feeds install -a
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0x0 0x40000000 0x0 0x20000000>;
+	};
+};
+
+/* 删除 WiFi 相关节点 */
+&wifi0 {
+	status = "disabled";
+ };
+
+&wifi1 {
+	status = "disabled";
+ };
+EOF
+
+# ============================================
+# 17. 代码修复
+# ============================================
+# 修复文件
+find ./ -name "getifaddr.c" -exec sed -i 's/return 1;/return 0;/g' {} \;
+sed -i '/\/usr\/bin\/zsh/d' package/base-files/files/etc/profile
+find ./ -name "cascade.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
+find ./ -name "dark.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
+find ./ -name "cascade.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
+find ./ -name "dark.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
+
+# ============================================
+# 18. UCI 默认值设置
+# ============================================
+# 修改ttyd为免密
+install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" "package/base-files/files/etc/uci-defaults/99_ttyd-nopass"
+install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" "package/base-files/files/etc/uci-defaults/99_set_argon_primary"
+# 解决 dropbear 配置的 bug
+install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
+if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
+	# 解决 nginx 的问题
+	install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_nginx_setup.sh" "package/base-files/files/etc/uci-defaults/99_nginx_setup"
+fi
+
+# ============================================
+# 19. Golang 编译器更新
+# ============================================
+GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
+GOLANG_BRANCH="25.x"
+if [[ -d ./feeds/packages/lang/golang ]]; then \
+	rm -rf ./feeds/packages/lang/golang
+	git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
+fi
