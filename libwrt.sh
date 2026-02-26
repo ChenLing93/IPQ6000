@@ -2,7 +2,7 @@
 #!/bin/bash
 
 # 修改默认IP
-sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate
+# sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
 
 #补足依赖
 #sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
@@ -107,7 +107,7 @@ keywords_to_delete=(
 )
 
 
-[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd")
+[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("usb" "wpad" "hostapd")
 [[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "disk")
 
 for keyword in "${keywords_to_delete[@]}"; do
@@ -118,8 +118,8 @@ done
 provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-zerotier=y"
     "CONFIG_PACKAGE_luci-i18n-zerotier-zh-cn=y"
-    # "CONFIG_PACKAGE_luci-app-adguardhome=y"
-    # "CONFIG_PACKAGE_luci-i18n-adguardhome-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-adguardhome=y"
+    "CONFIG_PACKAGE_luci-i18n-adguardhome-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-poweroff=y"
     "CONFIG_PACKAGE_luci-i18n-poweroff-zh-cn=y"
     "CONFIG_PACKAGE_cpufreq=y"
@@ -128,8 +128,8 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-ttyd=y"
     "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
     "CONFIG_PACKAGE_ttyd=y"
-    # "CONFIG_PACKAGE_luci-app-homeproxy=y"
-    # "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-homeproxy=y"
+    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-ddns-go=y"
     "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-argon-config=y"
@@ -154,19 +154,7 @@ provided_config_lines=(
     #"CONFIG_PACKAGE_luci-app-openvpn-client=y"
 	"CONFIG_PACKAGE_luci-app-wireguard=y"
     "CONFIG_PACKAGE_wireguard-tools=y"
-	"CONFIG_PACKAGE_luci-app-ddnsto=y"
-	"CONFIG_PACKAGE_ddnsto=y"
-	"CONFIG_PACKAGE_luci-app-quickstart"
-	"CONFIG_PACKAGE_luci-app-istorex=y"
-	"CONFIG_PACKAGE_parted=y"
-	"CONFIG_PACKAGE_libparted=y"
-	"CONFIG_PACKAGE_fatresize=y"
-	"CONFIG_PACKAGE_nikki=y"
-	"CONFIG_PACKAGE_luci-app-nikki=y"
-	"CONFIG_PACKAGE_python3=y"
-	"CONFIG_PACKAGE_python3-pysocks2=y"
-	"CONFIG_PACKAGE_python3-unidecode=y"
-	"CONFIG_PACKAGE_python3-light=y"
+	"CONFIG_PACKAGE_kmod-wireguard=y"
 )
 
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
@@ -175,13 +163,6 @@ if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
     provided_config_lines+=(
         "CONFIG_PACKAGE_hostapd-common=n"
         "CONFIG_PACKAGE_wpad-openssl=n"
-		"CONFIG_PACKAGE_kmod-usb3=y"
-		"CONFIG_PACKAGE_kmod-usb-storage=y"
-		"CONFIG_PACKAGE_kmod-usb-storage-uas=y"
-		"CONFIG_PACKAGE_kmod-fs-ext4=y"
-		"CONFIG_PACKAGE_kmod-fs-exfat=y"
-		"CONFIG_PACKAGE_kmod-fs-ntfs3=y"
-		"CONFIG_PACKAGE_kmod-fs-vfat=y"
     )
 
     echo "[NOWIFI] preparing nowifi dtsi files..."
