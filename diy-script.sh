@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 # 修改默认IP
@@ -6,15 +5,6 @@
 sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate
 sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/etc/config/network
 
-#补足依赖
-#sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-echo "添加 Nikki 自定义源..."
-if ! grep -q "nikki" feeds.conf.default; then
-    echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> feeds.conf.default
-    echo "✓ Nikki 源已添加"
-else
-    echo "✓ Nikki 源已存在,跳过"
-fi
 #安装和更新软件包
 UPDATE_PACKAGE() {
 	local PKG_NAME=$1
@@ -97,6 +87,7 @@ UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master"
 UPDATE_PACKAGE "ddnsto" "kenzok8/openwrt-packages" "master" "pkg"
 UPDATE_PACKAGE "cups" "https://github.com/op4packages/openwrt-cups.git" "master" "pkg"
 UPDATE_PACKAGE "istore" "linkease/istore" "main"
+UPDATE_PACKAGE "nikki" "https://github.com/nikkinikki-org/OpenWrt-nikki.git" "main"
 
 
 # 只保留指定的 qualcommax_ipq60xx 设备
