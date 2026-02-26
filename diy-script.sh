@@ -57,6 +57,7 @@ UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 UPDATE_PACKAGE "ddnsto" "kenzok8/openwrt-packages" "master" "pkg"
 UPDATE_PACKAGE "cups" "https://github.com/op4packages/openwrt-cups.git" "master" "pkg"
 UPDATE_PACKAGE "istore" "linkease/istore" "main"
+UPDATE_PACKAGE "nikki luci-app-nikki" "nikkinikki-org/OpenWrt-nikki" "main" "pkg"
 
 #small-package
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
@@ -325,50 +326,69 @@ rm ./target/linux/qualcommax/patches-6.12/0083-v6.11-arm64-dts-qcom-ipq6018-add-
 #修复文件
 find ./ -name "getifaddr.c" -exec sed -i 's/return 1;/return 0;/g' {} \;
 sed -i '/\/usr\/bin\/zsh/d' package/base-files/files/etc/profile
-
 find ./ -name "cascade.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 find ./ -name "dark.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 find ./ -name "cascade.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 find ./ -name "dark.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
 
-#修改ttyd为免密
-install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" "package/base-files/files/etc/uci-defaults/99_ttyd-nopass"
+# 修改ttyd为免密
+if [[ -f "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" ]]; then
+    install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" "package/base-files/files/etc/uci-defaults/99_ttyd-nopass"
+fi
 
+# 设置 Argon 主题为主主题
+if [[ -f "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" ]]; then
+    install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" "package/base-files/files/etc/uci-defaults/99_set_argon_primary"
+fi
 
-install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" "package/base-files/files/etc/uci-defaults/99_set_argon_primary"
-install -Dm755 "${GITHUB_WORKSPACE}/scripts/99-distfeeds.conf" "package/emortal/default-settings/files/99-distfeeds.conf"
-sed -i "/define Package\/default-settings\/install/a\\
-\\t\$(INSTALL_DIR) \$(1)/etc\\n\
-\t\$(INSTALL_DATA) ./files/99-distfeeds.conf \$(1)/etc/99-distfeeds.conf\n" "package/emortal/default-settings/Makefile"
+# 安装 distfeeds 配置并修改 Makefile
+if [[ -f "${GITHUB_WORKSPACE}/scripts/99-distfeeds.conf" ]]; then
+    install -Dm755 "${GITHUB_WORKSPACE}/scripts/99-distfeeds.conf" "package/emortal/default-settings/files/99-distfeeds.conf"
+    
+    # 修改 Makefile - 添加 distfeeds.conf 安装指令
+    cat >> "package/emortal/default-settings/Makefile" << 'EOF'
 
-sed -i "/exit 0/i\\
-[ -f \'/etc/99-distfeeds.conf\' ] && mv \'/etc/99-distfeeds.conf\' \'/etc/opkg/distfeeds.conf\'\n\
-sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" "package/emortal/default-settings/files/99-default-settings"
+define Package/default-settings/install
+	$(CP) ./files/* $(1)/
+	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_DATA) ./files/99-distfeeds.conf $(1)/etc/99-distfeeds.conf
+endef
+EOF
 
-#解决 dropbear 配置的 bug
-install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
+    # 修改 99-default-settings 脚本 - 添加 distfeeds.conf 处理
+    if [[ -f "package/emortal/default-settings/files/99-default-settings" ]]; then
+        # 在 exit 0 之前插入代码
+        sed -i '/^exit 0/i\
+\
+[ -f '\''/etc/99-distfeeds.conf'\'' ] && mv '\''/etc/99-distfeeds.conf'\'' '\''/etc/opkg/distfeeds.conf'\''\
+\
+sed -ri '\''/check_signature/s@^[^#]@#&@'\'' /etc/opkg.conf
+' "package/emortal/default-settings/files/99-default-settings"
+    fi
+fi
+
+# 解决 dropbear 配置的 bug
+if [[ -f "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" ]]; then
+    install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
+fi
 
 #if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
-#    #解决 nginx 的问题
-#    install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_nginx_setup.sh" "package/base-files/files/etc/uci-defaults/99_nginx_setup"
+# #解决 nginx 的问题
+# install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_nginx_setup.sh" "package/base-files/files/etc/uci-defaults/99_nginx_setup"
 #fi
 
 if ! grep -q "CMAKE_POLICY_VERSION_MINIMUM" include/cmake.mk; then
-  echo 'CMAKE_OPTIONS += -DCMAKE_POLICY_VERSION_MINIMUM=3.5' >> include/cmake.mk
+    echo 'CMAKE_OPTIONS += -DCMAKE_POLICY_VERSION_MINIMUM=3.5' >> include/cmake.mk
 fi
-
 
 #修复 rust 编译
 RUST_FILE=$(find ./feeds/packages/ -maxdepth 3 -type f -wholename "*/rust/Makefile")
 if [ -f "$RUST_FILE" ]; then
-	echo " "
-
-	sed -i 's/ci-llvm=true/ci-llvm=false/g' $RUST_FILE
-	patch $RUST_FILE ${GITHUB_WORKSPACE}/scripts/rust-makefile.patch
-
-	echo "rust has been fixed!"
+    echo " "
+    sed -i 's/ci-llvm=true/ci-llvm=false/g' $RUST_FILE
+    patch $RUST_FILE ${GITHUB_WORKSPACE}/scripts/rust-makefile.patch
+    echo "rust has been fixed!"
 fi
-
 # --- 彻底解决 GCC 14 + mbedtls target mismatch 问题 (增强版) ---
 echo "Executing Enhanced Hard-fix for mbedtls GCC 14..."
 
