@@ -1,9 +1,11 @@
+
 #!/bin/bash
 
 # 修改默认IP
 # sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
-sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate
-sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/etc/config/network
+
+#补足依赖
+#sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
 
 #安装和更新软件包
 UPDATE_PACKAGE() {
@@ -84,16 +86,11 @@ mkdir -p package/parted && \
 wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O package/parted/Makefile
 
 UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master"
-UPDATE_PACKAGE "ddnsto" "kenzok8/openwrt-packages" "master" "pkg"
-UPDATE_PACKAGE "cups" "https://github.com/op4packages/openwrt-cups.git" "master" "pkg"
-UPDATE_PACKAGE "istore" "linkease/istore" "main"
-UPDATE_PACKAGE "nikki" "https://github.com/nikkinikki-org/OpenWrt-nikki.git" "main"
-
 
 # 只保留指定的 qualcommax_ipq60xx 设备
 if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
     # 有 EMMC 时，只保留：redmi_ax5-jdcloud / jdcloud_re-ss-01 / jdcloud_re-cs-07
-    keep_pattern="\(redmi_ax5-jdcloud\|link_nn6000-v1\|link_nn6000-v2\|jdcloud_re-ss-01\|jdcloud_re-cs-07\)=y$"
+    keep_pattern="\(redmi_ax5-jdcloud\|jdcloud_re-ss-01\|jdcloud_re-cs-07\)=y$"
 else
     # 普通情况，只保留这几个
     keep_pattern="\(redmi_ax5\|qihoo_360v6\|redmi_ax5-jdcloud\|zn_m2\|jdcloud_re-ss-01\|jdcloud_re-cs-07\)=y$"
@@ -131,8 +128,8 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-ttyd=y"
     "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
     "CONFIG_PACKAGE_ttyd=y"
-    #"CONFIG_PACKAGE_luci-app-homeproxy=y"
-    #"CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-homeproxy=y"
+    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-ddns-go=y"
     "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-argon-config=y"
@@ -158,28 +155,6 @@ provided_config_lines=(
 	"CONFIG_PACKAGE_luci-app-wireguard=y"
     "CONFIG_PACKAGE_wireguard-tools=y"
 	"CONFIG_PACKAGE_kmod-wireguard=y"
-    "CONFIG_PACKAGE_luci-app-ddnsto=y"
-    "CONFIG_PACKAGE_ddnsto=y"
-    "CONFIG_PACKAGE_luci-app-store=y"
-    "CONFIG_PACKAGE_luci-app-quickstart"
-    "CONFIG_PACKAGE_luci-app-istorex=y"
-    "CONFIG_PACKAGE_parted=y"
-    "CONFIG_PACKAGE_libparted=y"
-    "CONFIG_PACKAGE_fatresize=y"
-    # 移除 Nikki 相关配置,将通过 feeds 自动添加
-    # "CONFIG_PACKAGE_nikki=y"
-    # "CONFIG_PACKAGE_luci-app-nikki=y"
-    # "CONFIG_PACKAGE_luci-i18n-nikki-zh-cn=y"
-    # 修复 Python3 配置
-    "CONFIG_PACKAGE_python3-base=y"
-    "CONFIG_PACKAGE_python3-light=y"
-    "CONFIG_PACKAGE_python3-unidecode=y"
-    "CONFIG_PACKAGE_python3-pysocks2=y"
-    # 打印机支持 CUPS
-    "CONFIG_PACKAGE_cups=y"
-    "CONFIG_PACKAGE_cups-bsd=y"
-    "CONFIG_PACKAGE_cups-client=y"
-    "CONFIG_PACKAGE_kmod-usb-printer=y"
 )
 
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
