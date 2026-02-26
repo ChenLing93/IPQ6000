@@ -11,7 +11,7 @@ env:
   CONFIG_FILE: configs/ipq60xx-6.12-nowifi.config
   DIY_SCRIPT: diy-script.sh
   CLASH_KERNEL: amd64
-  CACHE_TOOLCHAIN: false
+  CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: IPQ60XX-6.12-NOWIFI
@@ -166,7 +166,7 @@ jobs:
         body: |
           **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
           ### 📒 固件信息(无WIFI)
-          - 无WIFI带有线NSS的6.12内核固件
+          - 无WIFI带有线NSS的6.12内核固件 基于B大源码的自用带集客AC固件 稳定性未知  
           - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
           - ⚽ 固件源码: ${{ env.REPO_URL }}
           - 💝 源码分支: ${{ env.REPO_BRANCH }}
