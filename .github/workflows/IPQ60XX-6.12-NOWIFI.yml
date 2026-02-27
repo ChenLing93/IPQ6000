@@ -113,6 +113,159 @@ jobs:
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
 
+name: IPQ60XX-6.12-NOWIFI
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 19 * * *
+
+env:
+  REPO_URL: https://github.com/LiBwrt/openwrt-6.x.git
+  REPO_BRANCH: main-nss
+  CONFIG_FILE: configs/ipq60xx-6.12-nowifi.config
+  DIY_SCRIPT: libwrt.sh
+  CLASH_KERNEL: amd64
+  CACHE_TOOLCHAIN: true
+  UPLOAD_BIN_DIR: false
+  FIRMWARE_RELEASE: true
+  FIRMWARE_TAG: IPQ60XX-6.12-NOWIFI
+  TZ: Asia/Shanghai
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check Server Performance(检查服务器性能)
+      run: |
+        echo "警告⚠"
+        echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
+        echo -e "已知CPU型号（降序）：7763，8370C，8272CL，8171M，E5-2673 \n"
+        echo "--------------------------CPU信息--------------------------"
+        echo "CPU物理数量：$(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo -e "CPU核心信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+        echo "--------------------------内存信息--------------------------"
+        echo "已安装内存详细信息："
+        echo -e "$(sudo lshw -short -C memory | grep GiB) \n"
+        echo "--------------------------硬盘信息--------------------------"
+        echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)"
+        df -hT
+
+    - name: Initialization Environment(初始化环境)
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        sudo -E apt -yqq install dos2unix
+        sudo -E apt -yqq install libfuse-dev
+        sudo -E apt -yqq autoremove --purge
+        sudo -E apt -yqq autoclean
+        sudo -E apt -yqq clean
+        sudo -E systemctl daemon-reload
+        sudo timedatectl set-timezone "$TZ"
+
+    - name: Combine Disks(合并磁盘)
+      uses: easimon/maximize-build-space@master
+      with:
+        swap-size-mb: 1024
+        temp-reserve-mb: 100
+        root-reserve-mb: 1024
+
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: Clone Source Code(克隆源代码)
+      run: |
+        df -hT $GITHUB_WORKSPACE
+        git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
+        cd openwrt
+        echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+        VERSION_INFO=$(git show -s --date=short --format="作者: %an时间: %cd内容: %shash: %H")
+        echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
+        VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/generic/kernel-6.12)
+        echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
+
+    - name: Generate Variables(生成变量)
+      run: |
+        cp $CONFIG_FILE $OPENWRT_PATH/.config
+        cd $OPENWRT_PATH
+        make defconfig > /dev/null 2>&1
+        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
+        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
+        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
+        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
+        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
+        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
+
+    - name: Cache Toolchain(缓存工具链)
+      if: env.CACHE_TOOLCHAIN == 'true'
+      uses: HiGarfield/cachewrtbuild@main
+      with:
+        ccache: false
+        mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
+        prefix: ${{ env.OPENWRT_PATH }}
+
+    - name: Fix mbedtls GCC 14 Compatibility(修复mbedtls GCC 14兼容性)
+      run: |
+        cd $OPENWRT_PATH
+        
+        # 创建本地覆盖文件，禁用 FORTIFY_SOURCE
+        mkdir -p include
+        cat > include/local.mk << 'EOF'
+        
+        TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+        TARGET_CXXFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+        EOF
+        
+        # 修复全局 hardened.mk
+        if [[ -f "include/hardened.mk" ]]; then
+            sed -i 's/-D_FORTIFY_SOURCE=1/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
+            sed -i 's/-D_FORTIFY_SOURCE=2/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
+            sed -i 's/-D_FORTIFY_SOURCE=3/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
+        fi
+        
+        # 修复 mbedtls Makefile（确保 CMake 使用正确的编译标志）
+        MBEDTLS_MAKEFILE="package/libs/mbedtls/Makefile"
+        if [[ -f "$MBEDTLS_MAKEFILE" ]]; then
+            # 移除已知的编译警告选项
+            sed -i 's/-Wno-unterminated-string-initialization//g' "$MBEDTLS_MAKEFILE"
+            sed -i 's/-Wno-shift-count-overflow//g' "$MBEDTLS_MAKEFILE"
+            sed -i 's/-Wno-array-bounds//g' "$MBEDTLS_MAKEFILE"
+            
+            # 确保添加 -Wno-error 以避免警告变成错误
+            if ! grep -q "CMAKE_OPTIONS.*-Wno-error" "$MBEDTLS_MAKEFILE"; then
+                sed -i '/CMAKE_OPTIONS +=/ s/$/ -Wno-error/' "$MBEDTLS_MAKEFILE"
+            fi
+            
+            # 添加 FORTIFY_SOURCE 禁用标志
+            if ! grep -q "U_FORTIFY_SOURCE" "$MBEDTLS_MAKEFILE"; then
+                sed -i '/CMAKE_OPTIONS +=/a \\ -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0' "$MBEDTLS_MAKEFILE"
+            fi
+        fi
+
+    - name: Install Feeds(安装feeds)
+      run: |
+        cd $OPENWRT_PATH
+        # 添加官方 packages 源（修复 libparted、boost-system、python3-pysocks 等依赖缺失）
+        if ! grep -q "src-git packages" feeds.conf.default 2>/dev/null; then
+          echo "src-git packages https://github.com/openwrt/packages.git;openwrt-23.05" >> feeds.conf.default
+        fi
+        # 添加官方 luci 源
+        if ! grep -q "src-git luci" feeds.conf.default 2>/dev/null; then
+          echo "src-git luci https://github.com/openwrt/luci.git;openwrt-23.05" >> feeds.conf.default
+        fi
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: Load Custom Configuration(加载自定义配置)
+      run: |
+        [ -e files ] && mv files $OPENWRT_PATH/files
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
+        chmod +x $DIY_SCRIPT
+        cd $OPENWRT_PATH
+        $GITHUB_WORKSPACE/$DIY_SCRIPT
+
     # 👇 添加完整的修复步骤 👇
     - name: 修复所有编译问题
       run: |
@@ -336,3 +489,4 @@ jobs:
           ### 🧊 固件版本
           - 固件内核版本：${{ env.VERSION_KERNEL }}
           - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录 - ${{ env.VERSION_INFO }}
+
