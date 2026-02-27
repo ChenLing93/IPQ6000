@@ -6,7 +6,7 @@ on:
     - cron: 0 19 * * *
 
 env:
-  REPO_URL: https://github.com/laipeng668/openwrt-6.x
+  REPO_URL: https://github.com/laipeng668/openwrt-6.x.git
   REPO_BRANCH: main-nss
   CONFIG_FILE: configs/ipq60xx-6.12-nowifi.config
   DIY_SCRIPT: libwrt.sh
@@ -34,8 +34,7 @@ jobs:
         echo "已安装内存详细信息："
         echo -e "$(sudo lshw -short -C memory | grep GiB) \n"
         echo "--------------------------硬盘信息--------------------------"
-        echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)"
-        df -hT
+        echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
 
     - name: Initialization Environment(初始化环境)
       env:
@@ -66,7 +65,7 @@ jobs:
         git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-        VERSION_INFO=$(git show -s --date=short --format="作者: %an时间: %cd内容: %shash: %H")
+        VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H")
         echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
         VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/generic/kernel-6.12)
         echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
@@ -90,174 +89,13 @@ jobs:
         ccache: false
         mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
         prefix: ${{ env.OPENWRT_PATH }}
-
-    - name: Fix mbedtls GCC 14 Compatibility(修复mbedtls GCC 14兼容性)
-      run: |
-        cd $OPENWRT_PATH
-        
-        # ==========================================
-        # 最小化方案：禁用 mbedtls 的所有编译警告和优化
-        # ==========================================
-        
-        echo "修复 mbedtls GCC 14 兼容性..."
-        
-        MBEDTLS_DIR="package/libs/mbedtls"
-        
-        if [[ -f "$MBEDTLS_DIR/Makefile" ]]; then
-            # 备份原始 Makefile
-            cp "$MBEDTLS_DIR/Makefile" "$MBEDTLS_DIR/Makefile.bak"
-            
-            # 移除所有 -Werror 选项
-            sed -i 's/-Werror//g' "$MBEDTLS_DIR/Makefile"
-            
-            # 移除严格的格式检查
-            sed -i 's/-Wformat=2/-Wformat/g' "$MBEDTLS_DIR/Makefile"
-            sed -i 's/-Wformat-overflow=2//g' "$MBEDTLS_DIR/Makefile"
-            sed -i 's/-Wformat-truncation=2//g' "$MBEDTLS_DIR/Makefile"
-            sed -i 's/-Wmissing-prototypes//g' "$MBEDTLS_DIR/Makefile"
-            sed -i 's/-Wmissing-declarations//g' "$MBEDTLS_DIR/Makefile"
-            sed -i 's/-Wall/-Wno-all/g' "$MBEDTLS_DIR/Makefile"
-            sed -i 's/-Wextra/-Wno-extra/g' "$MBEDTLS_DIR/Makefile"
-            
-            # 添加 -Wno-error 禁用警告变错误
-            if ! grep -q "CMAKE_OPTIONS.*-Wno-error" "$MBEDTLS_DIR/Makefile"; then
-                sed -i '/CMAKE_OPTIONS +=/ s/$/ -Wno-error/' "$MBEDTLS_DIR/Makefile"
-            fi
-            
-            # 添加 CMAKE_C_FLAGS，完全禁用 FORTIFY_SOURCE
-            if ! grep -q "CMAKE_C_FLAGS" "$MBEDTLS_DIR/Makefile"; then
-                sed -i '/CMAKE_OPTIONS +=/a \\ -DCMAKE_C_FLAGS="-O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -Wno-error -fno-inline-functions-called-once"' "$MBEDTLS_DIR/Makefile"
-            fi
-            
-            echo "✓ 已禁用所有 mbedtls 编译警告和优化"
-        fi
-        
-        # 清理旧的构建目录
-        rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls-*
-        rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls*
-        echo "✓ 已清理旧的构建目录"
-        
-        # 创建新的 Makefile（mbedtls 3.5.2）
-        cat > "$MBEDTLS_DIR/Makefile" << 'EOFMAKE'
-#
-# Copyright (C) 2006-2020 OpenWrt.org
-#
-# This is free software, licensed under the GNU General Public License v2.
-# See /LICENSE for more information.
-#
-
-include $(TOPDIR)/rules.mk
-
-PKG_NAME:=mbedtls
-PKG_VERSION:=3.5.2
-PKG_RELEASE:=1
-PKG_HASH:=0d0287e1f9d014a2a28836e269258bca839f9a95e4d9d3a4d8265019609b945
-
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://github.com/Mbed-TLS/mbedtls/archive/refs/tags/v$(PKG_VERSION).tar.gz
-
-PKG_CPE_ID:=cpe:/a:arm:mbed_tls
-
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(BUILD_VARIANT)/$(PKG_NAME)-$(PKG_VERSION)
-
-PKG_LICENSE:=Apache-2.0
-PKG_LICENSE_FILES:=LICENSE
-
-PKG_USE_MIPS16:=0
-PKG_BUILD_PARALLEL:=1
-
-include $(INCLUDE_DIR)/package.mk
-include $(INCLUDE_DIR)/cmake.mk
-
-define Package/mbedtls/Default
-  SECTION:=libs
-  CATEGORY:=Libraries
-  SUBMENU:=SSL
-  TITLE:=SSL/TLS library
-  URL:=https://tls.mbed.org
-  ABI_VERSION:=16
-endef
-
-define Package/libmbedtls
-  $(call Package/mbedtls/Default)
-  DEPENDS:=+libpthread
-  TITLE+= (library)
-endef
-
-define Package/libmbedtls/config
-  source "$(SOURCE)/Config.in"
-endef
-
-define Package/mbedtls-util
-  $(call Package/mbedtls/Default,Default)
-  TITLE+= (utilities)
-  DEPENDS:=+libmbedtls
-endef
-
-CMAKE_OPTIONS += \
-	-DCMAKE_BUILD_TYPE=Release \
-	-DENABLE_TESTING=OFF \
-	-DENABLE_PROGRAMS=$(if $(CONFIG mbedtls-util),ON,OFF) \
-	-DGEN_FILES=OFF \
-	-DUSE_SHARED_MBEDTLS_LIBRARY=ON \
-	-DINSTALL_MBEDTLS_HEADERS=ON \
-	-DENABLE_ZLIB_SUPPORT=OFF \
-	-DENABLE_PSA_CRYPTO=ON \
-	-DPSA_CRYPTO_STORAGE_C=ON
-
-TARGET_CFLAGS += -ffunction-sections -fdata-sections -fPIC
-
-define Build/InstallDev
-	$(INSTALL_DIR) $(1)/usr/include
-	$(CP) $(PKG_INSTALL_DIR)/usr/include/* $(1)/usr/include/
-	$(INSTALL_DIR) $(1)/usr/lib
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/lib*.so* $(1)/usr/lib/
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/lib*.a $(1)/usr/lib/
-endef
-
-define Package/libmbedtls/install
-	$(INSTALL_DIR) $(1)/usr/lib
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libmbedtls.so.* $(1)/usr/lib/
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libmbedx509.so.* $(1)/usr/lib/
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libmbedcrypto.so.* $(1)/usr/lib/
-endef
-
-define Package/mbedtls-util/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/* $(1)/usr/bin/
-endef
-
-$(eval $(call BuildPackage,libmbedtls))
-$(eval $(call BuildPackage,mbedtls-util))
-EOFMAKE
-        
-        # 清理旧的构建目录
-        rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls-*
-        rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls*
-        rm -rf staging_dir/target-aarch64_cortex-a53_musl/usr/lib/libmbedtls*
-        rm -rf staging_dir/target-aarch64_cortex-a53_musl/usr/include/mbedtls*
-        
-        echo "✓ mbedtls 已替换为 3.5.2 版本"
-        echo "✓ 已清理旧的构建目录"
-        
-        # 清理旧的构建目录
-        rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls-*
-        echo "✓ 已清理旧的 mbedtls 构建目录"
-
+    
     - name: Install Feeds(安装feeds)
       run: |
         cd $OPENWRT_PATH
-        # 添加官方 packages 源（修复 libparted、boost-system、python3-pysocks 等依赖缺失）
-        if ! grep -q "src-git packages" feeds.conf.default 2>/dev/null; then
-          echo "src-git packages https://github.com/openwrt/packages.git;openwrt-23.05" >> feeds.conf.default
-        fi
-        # 添加官方 luci 源
-        if ! grep -q "src-git luci" feeds.conf.default 2>/dev/null; then
-          echo "src-git luci https://github.com/openwrt/luci.git;openwrt-23.05" >> feeds.conf.default
-        fi
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-
+  
     - name: Load Custom Configuration(加载自定义配置)
       run: |
         [ -e files ] && mv files $OPENWRT_PATH/files
@@ -265,155 +103,6 @@ EOFMAKE
         chmod +x $DIY_SCRIPT
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
-
-    # 👇 添加完整的修复步骤 👇
-    - name: 修复所有编译问题
-      run: |
-        cd openwrt
-        
-        echo "=================================="
-        echo "开始修复所有编译问题"
-        echo "=================================="
-        
-        # ==========================================
-        # 步骤 1：修复配置文件格式
-        # ==========================================
-        echo ""
-        echo "[步骤 1/4] 修复配置文件格式..."
-        
-        if [[ -f "./.config" ]]; then
-            # 转换换行符（CRLF -> LF）
-            sed -i 's/\r$//' .config
-            
-            # 移除前导空白
-            sed -i 's/^[ \t]*//' .config
-            
-            # 清理空行
-            sed -i '/^$/d' .config
-            
-            echo "  ✓ 配置文件格式已修复"
-        fi
-        
-        # ==========================================
-        # 步骤 2：修复缺失的依赖包
-        # ==========================================
-        echo ""
-        echo "[步骤 2/4] 修复缺失的依赖包..."
-        
-        # 2.1 确保 Nikki 包正确下载
-        if [[ ! -d "package/nikki" ]]; then
-            rm -rf package/nikki package/luci-app-nikki
-            git clone --depth=1 --single-branch --branch main "https://github.com/nikkinikki-org/OpenWrt-nikki.git" package/nikki
-            if [[ -d "package/nikki/luci-app-nikki" ]]; then
-                cp -rf package/nikki/luci-app-nikki ./package/
-            fi
-            echo "  ✓ Nikki 包已下载"
-        fi
-        
-        # 2.2 更新 feeds
-        if [[ -f "feeds.conf.default" ]]; then
-            ./scripts/feeds update -a || true
-            ./scripts/feeds install -a || true
-            echo "  ✓ feeds 已更新"
-        fi
-        
-        # 2.3 确保 Python3 包在 .config 中启用
-        if [[ -f "./.config" ]]; then
-            for pkg in python3 python3-light python3-base python3-pysocks python3-unidecode; do
-                if ! grep -q "CONFIG_PACKAGE_${pkg}=y" .config; then
-                    echo "CONFIG_PACKAGE_${pkg}=y" >> .config
-                fi
-            done
-            echo "  ✓ Python3 包已添加"
-        fi
-        
-        # 2.4 禁用可能导致编译失败的包
-        if [[ -f "./.config" ]]; then
-            # 禁用 trojan-plus（依赖 boost-system）
-            sed -i 's/^CONFIG_PACKAGE_trojan-plus=y/# CONFIG_PACKAGE_trojan-plus is not set/' .config
-            
-            # 禁用 fatresize（依赖 libparted）
-            sed -i 's/^CONFIG_PACKAGE_fatresize=y/# CONFIG_PACKAGE_fatresize is not set/' .config
-            
-            # 如果 shadowsocks-libev 不存在，禁用 luci-app-ssr-plus
-            if [[ ! -d "package/shadowsocks-libev" ]]; then
-                sed -i 's/^CONFIG_PACKAGE_luci-app-ssr-plus=y/# CONFIG_PACKAGE_luci-app-ssr-plus is not set/' .config
-            fi
-            
-            echo "  ✓ 问题包已禁用"
-        fi
-        
-        # ==========================================
-        # 步骤 3：强制修复 mbedtls GCC 14 编译错误
-        # ==========================================
-        echo ""
-        echo "[步骤 3/4] 强制修复 mbedtls GCC 14 编译错误..."
-        
-        MBEDTLS_DIR="package/libs/mbedtls"
-        MBEDTLS_MAKEFILE="$MBEDTLS_DIR/Makefile"
-        
-        if [[ -f "$MBEDTLS_MAKEFILE" ]]; then
-            # 3.1 清理 mbedtls 构建目录
-            BUILD_DIR=$(find build_dir -type d -name "mbedtls-*" 2>/dev/null || true)
-            if [[ -n "$BUILD_DIR" ]]; then
-                rm -rf $BUILD_DIR
-                echo "  ✓ 已清理 mbedtls 构建目录"
-            fi
-            
-            # 3.2 修复 mbedtls Makefile
-            sed -i 's/-Wno-unterminated-string-initialization//g' "$MBEDTLS_MAKEFILE"
-            sed -i 's/-Wno-shift-count-overflow//g' "$MBEDTLS_MAKEFILE"
-            sed -i 's/-Wno-array-bounds//g' "$MBEDTLS_MAKEFILE"
-            
-            if ! grep -q "CMAKE_OPTIONS.*-Wno-error" "$MBEDTLS_MAKEFILE"; then
-                sed -i '/CMAKE_OPTIONS +=/ s/$/ -Wno-error/' "$MBEDTLS_MAKEFILE"
-            fi
-            
-            sed -i 's/-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0//g' "$MBEDTLS_MAKEFILE"
-            sed -i '/CMAKE_OPTIONS +=/ s/$/ -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0/' "$MBEDTLS_MAKEFILE"
-            
-            if ! grep -q "CMAKE_C_FLAGS" "$MBEDTLS_MAKEFILE"; then
-                sed -i '/CMAKE_OPTIONS +=/a \ -DCMAKE_C_FLAGS="$(TARGET_CFLAGS) -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"' "$MBEDTLS_MAKEFILE"
-            fi
-            
-            echo "  ✓ mbedtls Makefile 已修复"
-        fi
-        
-        # 3.3 修复全局 hardened.mk
-        if [[ -f "include/hardened.mk" ]]; then
-            sed -i 's/-D_FORTIFY_SOURCE=1/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
-            sed -i 's/-D_FORTIFY_SOURCE=2/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
-            sed -i 's/-D_FORTIFY_SOURCE=3/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
-            echo "  ✓ include/hardened.mk 已修复"
-        fi
-        
-        # 3.4 创建/更新 local.mk
-        mkdir -p include
-        if [[ -f "include/local.mk" ]]; then
-            sed -i '/FORTIFY_SOURCE/d' include/local.mk
-        fi
-        echo "TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0" >> include/local.mk
-        echo "  ✓ include/local.mk 已更新"
-        
-        # 3.5 设置环境变量
-        export EXTRA_CFLAGS="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"
-        export CFLAGS="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"
-        export CXXFLAGS="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"
-        echo "  ✓ 环境变量已设置"
-        
-        # ==========================================
-        # 步骤 4：规范化配置
-        # ==========================================
-        echo ""
-        echo "[步骤 4/4] 规范化配置..."
-        
-        make defconfig
-        
-        echo ""
-        echo "=================================="
-        echo "✓ 所有修复完成"
-        echo "=================================="
-    # 👆 修复步骤结束 👆
 
     - name: Download DL Package(下载DL软件包)
       run: |
@@ -435,8 +124,7 @@ EOFMAKE
 
     - name: Check Space Usage(检查空间使用情况)
       if: (!cancelled())
-      run: |
-        df -hT
+      run: df -hT
 
     - name: Upload Bin Directory(上传固件)
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
@@ -477,15 +165,14 @@ EOFMAKE
         artifacts: ${{ env.FIRMWARE_PATH }}/*
         body: |
           **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
-
           ### 📒 固件信息(无WIFI)
-          - 无WIFI带有线NSS的6.12内核固件 基于B大源码的自用带集客AC固件 稳定性未知
+          - 无WIFI带有线NSS的6.12内核固件
           - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
           - ⚽ 固件源码: ${{ env.REPO_URL }}
           - 💝 源码分支: ${{ env.REPO_BRANCH }}
           - 🌐 默认地址: 192.168.5.1
           - 🔑 默认密码: password
-
           ### 🧊 固件版本
           - 固件内核版本：${{ env.VERSION_KERNEL }}
-          - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录 - ${{ env.VERSION_INFO }}
+          - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
+          - ${{ env.VERSION_INFO }}
