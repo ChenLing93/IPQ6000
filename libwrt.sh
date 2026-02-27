@@ -54,6 +54,17 @@ UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main"
 #UPDATE_PACKAGE "luci-app-homeproxy" "immortalwrt/homeproxy" "master"
 UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
+# Nikki 相关包
+echo "下载 Nikki 包..."
+UPDATE_PACKAGE "nikki" "nikkinikki-org/OpenWrt-nikki" "main" "name"
+
+# 复制 luci-app-nikki 到 package 根目录
+if [[ -d "package/nikki/luci-app-nikki" ]]; then
+    cp -rf package/nikki/luci-app-nikki ./package/
+    echo "✓ Nikki 包下载完成"
+else
+    echo "⚠️  警告：luci-app-nikki 子目录不存在"
+fi
 
 #small-package
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
