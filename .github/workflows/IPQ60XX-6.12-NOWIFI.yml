@@ -94,6 +94,14 @@ jobs:
     - name: Install Feeds(安装feeds)
       run: |
         cd $OPENWRT_PATH
+        # 添加官方 packages 源（修复 libparted、boost-system、python3-pysocks 等依赖缺失）
+        if ! grep -q "src-git packages" feeds.conf.default 2>/dev/null; then
+          echo "src-git packages https://github.com/openwrt/packages.git;openwrt-23.05" >> feeds.conf.default
+        fi
+        # 添加官方 luci 源
+        if ! grep -q "src-git luci" feeds.conf.default 2>/dev/null; then
+          echo "src-git luci https://github.com/openwrt/luci.git;openwrt-23.05" >> feeds.conf.default
+        fi
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
