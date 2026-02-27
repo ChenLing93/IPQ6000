@@ -2,7 +2,7 @@
 #!/bin/bash
 
 # 修改默认IP
-# sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
+sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate
 
 #补足依赖
 #sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
@@ -86,6 +86,9 @@ mkdir -p package/parted && \
 wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O package/parted/Makefile
 
 UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master"
+UPDATE_PACKAGE "ddnsto" "kenzok8/openwrt-packages" "master" "pkg"
+UPDATE_PACKAGE "cups" "https://github.com/op4packages/openwrt-cups.git" "master" "pkg"
+UPDATE_PACKAGE "istore" "linkease/istore" "main"
 
 # 只保留指定的 qualcommax_ipq60xx 设备
 if [[ $FIRMWARE_TAG == *"EMMC"* ]]; then
@@ -107,7 +110,7 @@ keywords_to_delete=(
 )
 
 
-[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("usb" "wpad" "hostapd")
+[[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd")
 [[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "disk")
 
 for keyword in "${keywords_to_delete[@]}"; do
@@ -150,6 +153,20 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-tailscale=y"
     #"CONFIG_PACKAGE_luci-app-msd_lite=y"
     #"CONFIG_PACKAGE_luci-app-lucky=y"
+	"CONFIG_PACKAGE_luci-app-ddnsto=y"
+	"CONFIG_PACKAGE_ddnsto=y"
+	"CONFIG_PACKAGE_luci-app-store=y"
+	"CONFIG_PACKAGE_luci-app-quickstart"
+	"CONFIG_PACKAGE_luci-app-istorex=y"
+	"CONFIG_PACKAGE_parted=y"
+	"CONFIG_PACKAGE_libparted=y"
+	"CONFIG_PACKAGE_fatresize=y"
+	"CONFIG_PACKAGE_nikki=y"
+	"CONFIG_PACKAGE_luci-app-nikki=y"
+	"CONFIG_PACKAGE_python3=y"
+	"CONFIG_PACKAGE_python3-pysocks=y"
+	"CONFIG_PACKAGE_python3-unidecode=y"
+	"CONFIG_PACKAGE_python3-light=y"
     "CONFIG_PACKAGE_luci-app-gecoosac=y"
     #"CONFIG_PACKAGE_luci-app-openvpn-client=y"
 	"CONFIG_PACKAGE_luci-app-wireguard=y"
@@ -163,6 +180,17 @@ if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
     provided_config_lines+=(
         "CONFIG_PACKAGE_hostapd-common=n"
         "CONFIG_PACKAGE_wpad-openssl=n"
+		"CONFIG_PACKAGE_kmod-usb3=y"
+		"CONFIG_PACKAGE_kmod-usb-storage=y"
+		"CONFIG_PACKAGE_kmod-usb-storage-uas=y"
+		"CONFIG_PACKAGE_kmod-fs-ext4=y"
+		"CONFIG_PACKAGE_kmod-fs-exfat=y"
+		"CONFIG_PACKAGE_kmod-fs-ntfs3=y"
+		"CONFIG_PACKAGE_kmod-fs-vfat=y"
+		"CONFIG_PACKAGE_cups=y"
+		"CONFIG_PACKAGE_cups-bsd=y"
+		"CONFIG_PACKAGE_cups-client=y"
+		"CONFIG_PACKAGE_kmod-usb-printer=y"
     )
 
     echo "[NOWIFI] preparing nowifi dtsi files..."
