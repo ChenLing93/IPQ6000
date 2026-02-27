@@ -1,4 +1,11 @@
 #!/bin/bash
+# ============================================
+# OpenWrt IPQ6018 DIY 自动配置脚本 (增强版)
+# 适配源码: LiBwrt/openwrt-6.x (main-nss 分支)
+# 平台: Qualcomm IPQ6018 (NOWIFI/EMMC 版本)
+# 内核: 6.12 (已修复版本)
+# 优化: 自动修复 GCC 14 + mbedtls 冲突、自动更新 Golang
+# ============================================
 
 set -euo pipefail
 
@@ -58,6 +65,9 @@ echo ""
 # 2. 修改默认IP
 # ============================================
 echo "📍 步骤 2/20: 修改默认 IP..."
+
+# 注释掉 10.0.0.1 的修改，保留 192.168.5.1
+# sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
 
 if [[ -f "package/base-files/files/bin/config_generate" ]]; then
     sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate || true
@@ -126,11 +136,11 @@ echo ""
 # ============================================
 echo "🛠️  步骤 4/20: 安装基础工具..."
 
-UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master" || true
-UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main" || true
-UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main" || true
-UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main" || true
-UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main" || true
+UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master" "" || true
+UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main" "" || true
+UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main" "" || true
+UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main" "" || true
+UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main" "" || true
 
 echo "✅ 基础工具已安装"
 echo ""
@@ -176,7 +186,7 @@ echo "📊 步骤 6/20: 安装网络测速工具..."
 
 UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg" || true
 UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg" || true
-UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "master" || true
+UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "master" "" || true
 
 echo "✅ 网络测速工具已安装"
 echo ""
@@ -186,8 +196,8 @@ echo ""
 # ============================================
 echo "🐳 步骤 7/20: 安装容器与文件工具..."
 
-UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main" || true
-UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main" || true
+UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main" "" || true
+UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main" "" || true
 
 # 修复 quickfile 架构问题
 if [[ -f "package/luci-app-quickfile/quickfile/Makefile" ]]; then
@@ -204,15 +214,15 @@ echo ""
 echo "🏪 步骤 7.5/20: 安装 iStore 商店、DDNSTO、Proton2025 主题..."
 
 # 安装 iStore 商店（istore 仓库）
-UPDATE_PACKAGE "luci-app-store" "istore/luci-app-store" "main" || true
-UPDATE_PACKAGE "istore-enhanced" "istore/istore-enhanced" "main" || true
-UPDATE_PACKAGE "quickstart" "istore/quickstart" "main" || true
+UPDATE_PACKAGE "luci-app-store" "istore/luci-app-store" "main" "" || true
+UPDATE_PACKAGE "istore-enhanced" "istore/istore-enhanced" "main" "" || true
+UPDATE_PACKAGE "quickstart" "istore/quickstart" "main" "" || true
 
 # 安装 DDNSTO（动态 DNS 工具）
-UPDATE_PACKAGE "luci-app-ddnsto" "garypang13/luci-app-ddnsto" "main" || true
+UPDATE_PACKAGE "luci-app-ddnsto" "garypang13/luci-app-ddnsto" "main" "" || true
 
 # 安装 Proton2025 主题（最新版 luci-theme-proton2025）
-UPDATE_PACKAGE "luci-theme-proton2025" "sirpdboy/luci-theme-proton2025" "main" || true
+UPDATE_PACKAGE "luci-theme-proton2025" "sirpdboy/luci-theme-proton2025" "main" "" || true
 
 echo "✅ iStore 商店已安装"
 echo "✅ DDNSTO 已安装"
@@ -247,7 +257,7 @@ echo ""
 # ============================================
 echo "🔧 步骤 9/20: 安装服务工具..."
 
-UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master" || true
+UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "master" "" || true
 
 echo "✅ 服务工具已安装"
 echo ""
