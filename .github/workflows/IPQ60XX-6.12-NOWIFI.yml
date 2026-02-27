@@ -104,6 +104,24 @@ jobs:
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
 
+    - name: 诊断配置文件
+      run: |
+        cd openwrt
+        echo "=== 第 346 行及其周围内容 ==="
+        sed -n '343,349p' .config | od -c | head -20
+
+    - name: 手动修复配置文件
+      run: |
+        cd openwrt
+        # 转换换行符
+        sed -i 's/\r$//' .config
+        sed -i 's/^[ \t]*//' .config
+          # 清理空行
+        sed -i '/^$/d' .config
+          # 再次诊断
+        echo "=== 修复后，第 346 行 ==="
+        sed -n '343,349p' .config
+
     - name: Download DL Package(下载DL软件包)
       run: |
         cd $OPENWRT_PATH
