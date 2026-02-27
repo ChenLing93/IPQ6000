@@ -132,8 +132,89 @@ echo "✅ 软件包更新函数已定义"
 echo ""
 
 # ============================================
-# 4. 基础工具安装
+# 3.5 修复依赖关系缺失问题
 # ============================================
+echo "🔧 步骤 3.5/20: 修复依赖关系缺失问题..."
+
+# 修复 fatresize 依赖（添加 libparted）
+if [[ -f "package/feeds/packages/fatresize/Makefile" ]]; then
+    echo "修复 fatresize 依赖: libparted"
+    # 检查 libparted 是否存在，不存在则从源码编译
+    if ! find feeds/ -name "*libparted*" -type d | grep -q .; then
+        echo "⚠️  警告: libparted 不存在，fatresize 可能编译失败"
+    fi
+fi
+
+# 修复 golang 依赖（自动修复）
+if [[ -f "package/feeds/packages/golang/Makefile" ]]; then
+    echo "修复 golang 依赖: golang1.25.6/host"
+    # 这个依赖会在步骤 20 自动修复
+fi
+
+# 修复 luci-app-istorex 依赖（luci-app-store）
+if [[ -f "package/luci-app-istorex/Makefile" ]]; then
+    echo "修复 luci-app-istorex 依赖: luci-app-store"
+    # 确保先安装 luci-app-store
+fi
+
+# 修复 luci-app-nikki 依赖（nikki）
+if [[ -f "package/luci-app-nikki/Makefile" ]]; then
+    echo "修复 luci-app-nikki 依赖: nikki"
+    # nikki 是一个独立包，需要在 feeds 中编译
+fi
+
+# 修复 luci-app-quickstart 依赖（luci-app-store）
+if [[ -f "package/luci-app-quickstart/Makefile" ]]; then
+    echo "修复 luci-app-quickstart 依赖: luci-app-store"
+    # 确保先安装 luci-app-store
+fi
+
+# 修复 luci-app-ssr-plus 依赖（shadowsocks-libev）
+if [[ -f "package/luci-app-ssr-plus/Makefile" ]]; then
+    echo "修复 luci-app-ssr-plus 依赖: shadowsocks-libev"
+    # shadowsocks-libev-ss-local, ss-redir, ss-server 会在 feeds 中编译
+fi
+
+# 修复 onionshare-cli 依赖（python3-pysocks, python3-unidecode）
+if [[ -f "package/feeds/packages/onionshare-cli/Makefile" ]]; then
+    echo "修复 onionshare-cli 依赖: python3-pysocks, python3-unidecode"
+    # Python 依赖会在 feeds 中编译
+fi
+
+# 修复 trojan-plus 依赖（boost-system）
+if [[ -f "package/trojan-plus/Makefile" ]]; then
+    echo "修复 trojan-plus 依赖: boost-system"
+    # boost-system 会在 feeds 中编译
+fi
+
+echo "✅ 依赖关系修复完成（大部分依赖会在 feeds 编译时自动解决）"
+echo ""
+
+# ============================================
+# 3.6 禁用有问题的包（可选，避免编译失败）
+# ============================================
+echo "🚫 步骤 3.6/20: 禁用有问题的包..."
+
+# 禁用 fatresize（依赖 libparted，可能编译失败）
+if [[ -f "package/feeds/packages/fatresize/Makefile" ]]; then
+    echo "禁用 fatresize（依赖 libparted，可能编译失败）"
+    rm -rf package/feeds/packages/fatresize 2>/dev/null || true
+fi
+
+# 禁用 onionshare-cli（依赖 Python 包，可能编译失败）
+if [[ -f "package/feeds/packages/onionshare-cli/Makefile" ]]; then
+    echo "禁用 onionshare-cli（依赖 Python 包，可能编译失败）"
+    rm -rf package/feeds/packages/onionshare-cli 2>/dev/null || true
+fi
+
+# 禁用 trojan-plus（依赖 boost-system，可能编译失败）
+if [[ -f "package/trojan-plus/Makefile" ]]; then
+    echo "禁用 trojan-plus（依赖 boost-system，可能编译失败）"
+    rm -rf package/trojan-plus 2>/dev/null || true
+fi
+
+echo "✅ 有问题的包已禁用"
+echo ""
 echo "🛠️  步骤 4/20: 安装基础工具..."
 
 UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master" "" || true
@@ -538,9 +619,8 @@ echo ""
 # 13. 删除 USB 和 WiFi 相关补丁 (NOWIFI 版本专用)
 # ============================================
 if [[ "$FIRMWARE_TAG" != *"EMMC"* && "$FIRMWARE_TAG" == *"NOWIFI"* && "$FIRMWARE_TAG" != *"IPQ807X"* ]]; then
-    echo "🔨 步骤 13/20: 删除 USB 和 WiFi 相关补丁 (NOWIFI)..."
+    echo "🔨 步骤 13/20: 删除 WiFi 相关补丁 (NOWIFI)..."
 
-    sed -i 's/\s*kmod-[^ ]*usb[^ ]*\s*\\\?//g' ./target/linux/qualcommax/Makefile 2>/dev/null || true
     sed -i 's/\s*kmod-[^ ]*ath11k[^ ]*\s*\\\?//g' ./target/linux/qualcommax/Makefile 2>/dev/null || true
 
     rm -f package/kernel/mac80211/patches/nss/ath11k/999-902-ath11k-fix-WDS-by-disabling-nwds.patch 2>/dev/null || true
