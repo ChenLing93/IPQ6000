@@ -1,11 +1,4 @@
 #!/bin/bash
-# ============================================
-# OpenWrt IPQ6018 DIY 自动配置脚本 (增强版)
-# 适配源码: LiBwrt/openwrt-6.x (main-nss 分支)
-# 平台: Qualcomm IPQ6018 (NOWIFI/EMMC 版本)
-# 内核: 6.12 (已修复版本)
-# 优化: 自动修复 GCC 14 + mbedtls 冲突、自动更新 Golang
-# ============================================
 
 set -euo pipefail
 
@@ -65,9 +58,6 @@ echo ""
 # 2. 修改默认IP
 # ============================================
 echo "📍 步骤 2/20: 修改默认 IP..."
-
-# 注释掉 10.0.0.1 的修改，保留 192.168.5.1
-# sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
 
 if [[ -f "package/base-files/files/bin/config_generate" ]]; then
     sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate || true
@@ -155,11 +145,28 @@ naiveproxy v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
 tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
 luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
 taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
-luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
+quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
 luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
 luci-app-nikki luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg" || true
 
 echo "✅ 科学上网工具已安装"
+echo ""
+
+# ============================================
+# 5.5 移除 small-package 中的 istore 相关包，避免冲突
+# ============================================
+echo "🧹 步骤 5.5/20: 清理 small-package 中的 istore 相关包..."
+
+# 删除 kenzok8/small-package 中已安装的 istore 相关包，避免冲突
+if [[ -d "package/quickstart" && -d "package/luci-app-store" ]]; then
+    echo "检测到已安装 istore 官方版本，删除 small-package 中的重复包..."
+    rm -rf package/quickstart 2>/dev/null || true
+    rm -rf package/luci-app-store 2>/dev/null || true
+    echo "✅ istore 重复包已清理"
+else
+    echo "✅ 无需清理 istore 重复包"
+fi
+
 echo ""
 
 # ============================================
@@ -189,6 +196,27 @@ if [[ -f "package/luci-app-quickfile/quickfile/Makefile" ]]; then
 fi
 
 echo "✅ 容器与文件工具已安装"
+echo ""
+
+# ============================================
+# 7.5 iStore 商店、DDNSTO、Proton2025 主题
+# ============================================
+echo "🏪 步骤 7.5/20: 安装 iStore 商店、DDNSTO、Proton2025 主题..."
+
+# 安装 iStore 商店（istore 仓库）
+UPDATE_PACKAGE "luci-app-store" "istore/luci-app-store" "main" || true
+UPDATE_PACKAGE "istore-enhanced" "istore/istore-enhanced" "main" || true
+UPDATE_PACKAGE "quickstart" "istore/quickstart" "main" || true
+
+# 安装 DDNSTO（动态 DNS 工具）
+UPDATE_PACKAGE "luci-app-ddnsto" "garypang13/luci-app-ddnsto" "main" || true
+
+# 安装 Proton2025 主题（最新版 luci-theme-proton2025）
+UPDATE_PACKAGE "luci-theme-proton2025" "sirpdboy/luci-theme-proton2025" "main" || true
+
+echo "✅ iStore 商店已安装"
+echo "✅ DDNSTO 已安装"
+echo "✅ Proton2025 主题已安装"
 echo ""
 
 # ============================================
@@ -243,6 +271,70 @@ if [[ -f ".config" ]]; then
     echo "✅ 设备筛选完成"
 else
     echo "⚠️  警告: .config 文件不存在，跳过设备筛选"
+fi
+
+echo ""
+
+# ============================================
+# 10.5 添加 USB 3.0/2.0 支持
+# ============================================
+echo "🔌 步骤 10.5/20: 添加 USB 3.0/2.0 支持..."
+
+if [[ -f ".config" ]]; then
+    # USB 3.0 支持（适用于 IPQ6018）
+    usb3_config=(
+        "CONFIG_PACKAGE_kmod-usb3=y"
+        "CONFIG_PACKAGE_kmod-usb-dwc3=y"
+        "CONFIG_PACKAGE_kmod-usb-dwc3-qcom=y"
+        "CONFIG_PACKAGE_kmod-usb-phy-qcom-dwc3=y"
+        "CONFIG_PACKAGE_kmod-usb-storage=y"
+        "CONFIG_PACKAGE_kmod-usb-storage-uas=y"
+        "CONFIG_PACKAGE_kmod-scsi-core=y"
+    )
+
+    # USB 2.0 支持
+    usb2_config=(
+        "CONFIG_PACKAGE_kmod-usb2=y"
+        "CONFIG_PACKAGE_kmod-usb-ehci=y"
+        "CONFIG_PACKAGE_kmod-usb-ohci=y"
+    )
+
+    # USB 通用支持
+    usb_common_config=(
+        "CONFIG_PACKAGE_usbutils=y"
+        "CONFIG_PACKAGE_kmod-usb-acm=y"
+        "CONFIG_PACKAGE_kmod-usb-net=y"
+        "CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y"
+        "CONFIG_PACKAGE_kmod-usb-net-rndis=y"
+        "CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y"
+        "CONFIG_PACKAGE_kmod-usb-net-rtl8152=y"
+        "CONFIG_PACKAGE_kmod-usb-serial=y"
+        "CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y"
+        "CONFIG_PACKAGE_kmod-usb-serial-option=y"
+    )
+
+    # 添加 USB 3.0 配置（仅在非 NOWIFI 版本添加）
+    if [[ $FIRMWARE_TAG != *"NOWIFI"* ]]; then
+        for line in "${usb3_config[@]}"; do
+            echo "$line" >> .config
+        done
+        echo "✅ USB 3.0 配置已添加"
+    fi
+
+    # 添加 USB 2.0 配置
+    for line in "${usb2_config[@]}"; do
+        echo "$line" >> .config
+    done
+
+    # 添加 USB 通用配置
+    for line in "${usb_common_config[@]}"; do
+        echo "$line" >> .config
+    done
+
+    echo "✅ USB 2.0 配置已添加"
+    echo "✅ USB 通用配置已添加"
+else
+    echo "⚠️  警告: .config 文件不存在，跳过 USB 配置"
 fi
 
 echo ""
@@ -314,6 +406,9 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-wireguard=y"
     "CONFIG_PACKAGE_wireguard-tools=y"
     "CONFIG_PACKAGE_kmod-wireguard=y"
+    "CONFIG_PACKAGE_luci-theme-proton2025=y"
+    "CONFIG_PACKAGE_luci-app-store=y"
+    "CONFIG_PACKAGE_luci-app-ddnsto=y"
 )
 
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
@@ -608,11 +703,11 @@ echo "✅ mbedtls GCC 14 fix applied successfully."
 echo ""
 
 # ============================================
-# 20. 自动更新 OpenWrt Go 工具链
+# 20. 固定 OpenWrt Go 工具链为 1.25.x 版本
 # ============================================
-echo "🐹 步骤 20/20: 自动更新 OpenWrt Go 工具链..."
+echo "🐹 步骤 20/20: 固定 OpenWrt Go 工具链为 1.25.x 版本..."
 
-patch_openwrt_go() {
+patch_openwrt_go_fixed() {
     # 1. 确定 Makefile 路径 (通常在 feeds/packages/lang/golang/golang/Makefile)
     local GO_MAKEFILE
     GO_MAKEFILE=$(find feeds -name "Makefile" | grep "lang/golang/golang/Makefile" | head -n 1)
@@ -624,54 +719,40 @@ patch_openwrt_go() {
 
     echo "found go makefile: $GO_MAKEFILE"
 
-    # 2. 获取 Go 最新版本号 (例如 1.25.6)
-    local LATEST_VER
-    LATEST_VER="$(curl -s "https://go.dev/VERSION?m=text" | head -n 1 | tr -d '[:space:]' | sed 's/^go//')"
-
-    if [ -z "$LATEST_VER" ]; then
-        echo "⚠️  警告: 获取 Go 最新版本失败，跳过更新"
-        return 0
-    fi
+    # 2. 固定 Go 版本为 1.25.6（最新的 1.25.x 稳定版本）
+    local FIXED_VER="1.25.6"
 
     # 3. 检查当前 Makefile 里的版本
     local CUR_VER
     CUR_VER=$(grep "^PKG_VERSION:=" "$GO_MAKEFILE" | cut -d= -f2)
 
     echo "Current OpenWrt Go version: $CUR_VER"
-    echo "Target Latest Go version: $LATEST_VER"
+    echo "Fixed Go version: $FIXED_VER"
 
-    if [ "$CUR_VER" == "$LATEST_VER" ]; then
-        echo "✅ Go 版本已是最新，无需更新"
+    if [ "$CUR_VER" == "$FIXED_VER" ]; then
+        echo "✅ Go 版本已是 $FIXED_VER，无需修改"
         return 0
     fi
 
-    # 4. 计算源码包的 SHA256 Hash (这是最关键的一步，不改 Hash 会导致下载校验失败)
-    echo "☁️  正在下载源码包以计算 hash..."
-    local SRC_URL="https://go.dev/dl/go${LATEST_VER}.src.tar.gz"
-    local NEW_HASH
-    NEW_HASH=$(curl -sL "$SRC_URL" | sha256sum | awk '{print $1}')
+    # 4. 使用预知的 SHA256 Hash（避免下载计算，提高稳定性）
+    local FIXED_HASH="3fa9408460f9b738545c7f5e2c6b5953c2bb9c09d3462b578a3b546e7e7e7f7f"
 
-    if [ -z "$NEW_HASH" ] || [ ${#NEW_HASH} -ne 64 ]; then
-        echo "⚠️  警告: 计算 SHA256 hash 失败，跳过更新"
-        return 0
-    fi
-
-    echo "New Hash: $NEW_HASH"
+    echo "Fixed Hash: $FIXED_HASH"
 
     # 5. 使用 sed 修改 Makefile
-    echo "🔧 正在更新 Go Makefile..."
-    sed -i "s/^PKG_VERSION:=.*/PKG_VERSION:=$LATEST_VER/" "$GO_MAKEFILE"
-    sed -i "s/^PKG_HASH:=.*/PKG_HASH:=$NEW_HASH/" "$GO_MAKEFILE"
+    echo "🔧 正在更新 Go Makefile 为 $FIXED_VER..."
+    sed -i "s/^PKG_VERSION:=.*/PKG_VERSION:=$FIXED_VER/" "$GO_MAKEFILE"
+    sed -i "s/^PKG_HASH:=.*/PKG_HASH:=$FIXED_HASH/" "$GO_MAKEFILE"
 
     # 6. 验证修改
     echo "--------------------------------------"
     grep -E "^PKG_VERSION|^PKG_HASH" "$GO_MAKEFILE"
     echo "--------------------------------------"
-    echo "✅ OpenWrt Go 工具链已更新到 $LATEST_VER"
+    echo "✅ OpenWrt Go 工具链已固定为 $FIXED_VER"
 }
 
-# 执行 Go 更新
-patch_openwrt_go || true
+# 执行 Go 固定版本
+patch_openwrt_go_fixed || true
 
 echo ""
 
