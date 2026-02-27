@@ -463,3 +463,58 @@ patch_openwrt_go() {
 
 # 执行补丁
 patch_openwrt_go || exit 1
+
+if [[ -f "./.config" ]]; then
+    # 转换换行符
+    sed -i 's/\r$//' .config
+    echo "✓ 已转换换行符为 LF"
+    
+    # 移除前导空白
+    sed -i 's/^[ \t]*//' .config
+    echo "✓ 已移除前导空白"
+    
+    # 清理空行
+    sed -i '/^$/d' .config
+    echo "✓ 已清理空行"
+else
+    echo "⚠️  警告：.config 文件不存在"
+fi
+
+# 修复 mbedtls GCC 14 编译错误
+echo ""
+echo "=================================="
+echo "修复 mbedtls GCC 14 编译错误"
+echo "=================================="
+
+if [[ -f "package/libs/mbedtls/Makefile" ]]; then
+    # 移除不支持的警告选项
+    sed -i 's/-Wno-unterminated-string-initialization//g' package/libs/mbedtls/Makefile
+    
+    # 添加 -Wno-error
+    if ! grep -q "CMAKE_OPTIONS.*-Wno-error" package/libs/mbedtls/Makefile; then
+        sed -i '/CMAKE_OPTIONS +=/ s/$/ -Wno-error/' package/libs/mbedtls/Makefile
+    fi
+    
+    # 修复 FORTIFY_SOURCE
+    sed -i 's/-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0//g' package/libs/mbedtls/Makefile
+    sed -i '/TARGET_CFLAGS +=/ s/$/ -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0/' package/libs/mbedtls/Makefile
+    
+    if ! grep -q "CMAKE_C_FLAGS" package/libs/mbedtls/Makefile; then
+        sed -i '/CMAKE_OPTIONS +=/a \ -DCMAKE_C_FLAGS="$(TARGET_CFLAGS) -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"' package/libs/mbedtls/Makefile
+    fi
+    
+    echo "✓ mbedtls Makefile 已修复"
+else
+    echo "⚠️  警告：未找到 mbedtls Makefile"
+fi
+
+# 修复全局安全定义
+if [[ -f "include/hardened.mk" ]]; then
+    sed -i 's/-D_FORTIFY_SOURCE=1/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
+    sed -i 's/-D_FORTIFY_SOURCE=2/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
+    echo "✓ include/hardened.mk 已修复"
+fi
+
+# 添加全局 local.mk
+mkdir -p include
+echo "TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0" >> include/local.mk
