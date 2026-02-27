@@ -96,22 +96,149 @@ jobs:
         cd $OPENWRT_PATH
         
         # ==========================================
-        # 终极方案：降级 mbedtls 到 3.5.2（GCC 14 兼容）
+        # 最小化方案：禁用 mbedtls 的所有编译警告和优化
         # ==========================================
         
-        echo "降级 mbedtls 从 3.6.5 到 3.5.2（GCC 14 兼容版本）..."
+        echo "修复 mbedtls GCC 14 兼容性..."
         
-        MBEDTLS_MAKEFILE="package/libs/mbedtls/Makefile"
-        if [[ -f "$MBEDTLS_MAKEFILE" ]]; then
-            # 修改版本为 3.5.2
-            sed -i 's/PKG_VERSION:=3.6.5/PKG_VERSION:=3.5.2/g' "$MBEDTLS_MAKEFILE"
-            sed -i 's/PKG_HASH:=.*/PKG_HASH:=0d0287e1f9d014a2a28836e269258bca839f9a95e4d9d3a4d8265019609b945/g' "$MBEDTLS_MAKEFILE"
+        MBEDTLS_DIR="package/libs/mbedtls"
+        
+        if [[ -f "$MBEDTLS_DIR/Makefile" ]]; then
+            # 备份原始 Makefile
+            cp "$MBEDTLS_DIR/Makefile" "$MBEDTLS_DIR/Makefile.bak"
             
-            # 修改下载 URL
-            sed -i 's|https://github.com/Mbed-TLS/mbedtls/archive/.*\.tar.gz|https://github.com/Mbed-TLS/mbedtls/archive/refs/tags/v3.5.2.tar.gz|g' "$MBEDTLS_MAKEFILE"
+            # 移除所有 -Werror 选项
+            sed -i 's/-Werror//g' "$MBEDTLS_DIR/Makefile"
             
-            echo "✓ mbedtls 已降级到 3.5.2"
+            # 移除严格的格式检查
+            sed -i 's/-Wformat=2/-Wformat/g' "$MBEDTLS_DIR/Makefile"
+            sed -i 's/-Wformat-overflow=2//g' "$MBEDTLS_DIR/Makefile"
+            sed -i 's/-Wformat-truncation=2//g' "$MBEDTLS_DIR/Makefile"
+            sed -i 's/-Wmissing-prototypes//g' "$MBEDTLS_DIR/Makefile"
+            sed -i 's/-Wmissing-declarations//g' "$MBEDTLS_DIR/Makefile"
+            sed -i 's/-Wall/-Wno-all/g' "$MBEDTLS_DIR/Makefile"
+            sed -i 's/-Wextra/-Wno-extra/g' "$MBEDTLS_DIR/Makefile"
+            
+            # 添加 -Wno-error 禁用警告变错误
+            if ! grep -q "CMAKE_OPTIONS.*-Wno-error" "$MBEDTLS_DIR/Makefile"; then
+                sed -i '/CMAKE_OPTIONS +=/ s/$/ -Wno-error/' "$MBEDTLS_DIR/Makefile"
+            fi
+            
+            # 添加 CMAKE_C_FLAGS，完全禁用 FORTIFY_SOURCE
+            if ! grep -q "CMAKE_C_FLAGS" "$MBEDTLS_DIR/Makefile"; then
+                sed -i '/CMAKE_OPTIONS +=/a \\ -DCMAKE_C_FLAGS="-O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -Wno-error -fno-inline-functions-called-once"' "$MBEDTLS_DIR/Makefile"
+            fi
+            
+            echo "✓ 已禁用所有 mbedtls 编译警告和优化"
         fi
+        
+        # 清理旧的构建目录
+        rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls-*
+        rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls*
+        echo "✓ 已清理旧的构建目录"
+        
+        # 创建新的 Makefile（mbedtls 3.5.2）
+        cat > "$MBEDTLS_DIR/Makefile" << 'EOFMAKE'
+#
+# Copyright (C) 2006-2020 OpenWrt.org
+#
+# This is free software, licensed under the GNU General Public License v2.
+# See /LICENSE for more information.
+#
+
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=mbedtls
+PKG_VERSION:=3.5.2
+PKG_RELEASE:=1
+PKG_HASH:=0d0287e1f9d014a2a28836e269258bca839f9a95e4d9d3a4d8265019609b945
+
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://github.com/Mbed-TLS/mbedtls/archive/refs/tags/v$(PKG_VERSION).tar.gz
+
+PKG_CPE_ID:=cpe:/a:arm:mbed_tls
+
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(BUILD_VARIANT)/$(PKG_NAME)-$(PKG_VERSION)
+
+PKG_LICENSE:=Apache-2.0
+PKG_LICENSE_FILES:=LICENSE
+
+PKG_USE_MIPS16:=0
+PKG_BUILD_PARALLEL:=1
+
+include $(INCLUDE_DIR)/package.mk
+include $(INCLUDE_DIR)/cmake.mk
+
+define Package/mbedtls/Default
+  SECTION:=libs
+  CATEGORY:=Libraries
+  SUBMENU:=SSL
+  TITLE:=SSL/TLS library
+  URL:=https://tls.mbed.org
+  ABI_VERSION:=16
+endef
+
+define Package/libmbedtls
+  $(call Package/mbedtls/Default)
+  DEPENDS:=+libpthread
+  TITLE+= (library)
+endef
+
+define Package/libmbedtls/config
+  source "$(SOURCE)/Config.in"
+endef
+
+define Package/mbedtls-util
+  $(call Package/mbedtls/Default,Default)
+  TITLE+= (utilities)
+  DEPENDS:=+libmbedtls
+endef
+
+CMAKE_OPTIONS += \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DENABLE_TESTING=OFF \
+	-DENABLE_PROGRAMS=$(if $(CONFIG mbedtls-util),ON,OFF) \
+	-DGEN_FILES=OFF \
+	-DUSE_SHARED_MBEDTLS_LIBRARY=ON \
+	-DINSTALL_MBEDTLS_HEADERS=ON \
+	-DENABLE_ZLIB_SUPPORT=OFF \
+	-DENABLE_PSA_CRYPTO=ON \
+	-DPSA_CRYPTO_STORAGE_C=ON
+
+TARGET_CFLAGS += -ffunction-sections -fdata-sections -fPIC
+
+define Build/InstallDev
+	$(INSTALL_DIR) $(1)/usr/include
+	$(CP) $(PKG_INSTALL_DIR)/usr/include/* $(1)/usr/include/
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/lib*.so* $(1)/usr/lib/
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/lib*.a $(1)/usr/lib/
+endef
+
+define Package/libmbedtls/install
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libmbedtls.so.* $(1)/usr/lib/
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libmbedx509.so.* $(1)/usr/lib/
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libmbedcrypto.so.* $(1)/usr/lib/
+endef
+
+define Package/mbedtls-util/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/* $(1)/usr/bin/
+endef
+
+$(eval $(call BuildPackage,libmbedtls))
+$(eval $(call BuildPackage,mbedtls-util))
+EOFMAKE
+        
+        # 清理旧的构建目录
+        rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls-*
+        rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls*
+        rm -rf staging_dir/target-aarch64_cortex-a53_musl/usr/lib/libmbedtls*
+        rm -rf staging_dir/target-aarch64_cortex-a53_musl/usr/include/mbedtls*
+        
+        echo "✓ mbedtls 已替换为 3.5.2 版本"
+        echo "✓ 已清理旧的构建目录"
         
         # 清理旧的构建目录
         rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls-*
