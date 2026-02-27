@@ -95,39 +95,27 @@ jobs:
       run: |
         cd $OPENWRT_PATH
         
-        # 创建本地覆盖文件，禁用 FORTIFY_SOURCE
-        mkdir -p include
-        cat > include/local.mk << 'EOF'
-
-        TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
-        TARGET_CXXFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
-        EOF
+        # ==========================================
+        # 终极方案：降级 mbedtls 到 3.5.2（GCC 14 兼容）
+        # ==========================================
         
-        # 修复全局 hardened.mk
-        if [[ -f "include/hardened.mk" ]]; then
-            sed -i 's/-D_FORTIFY_SOURCE=1/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
-            sed -i 's/-D_FORTIFY_SOURCE=2/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
-            sed -i 's/-D_FORTIFY_SOURCE=3/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
-        fi
+        echo "降级 mbedtls 从 3.6.5 到 3.5.2（GCC 14 兼容版本）..."
         
-        # 修复 mbedtls Makefile（确保 CMake 使用正确的编译标志）
         MBEDTLS_MAKEFILE="package/libs/mbedtls/Makefile"
         if [[ -f "$MBEDTLS_MAKEFILE" ]]; then
-            # 移除已知的编译警告选项
-            sed -i 's/-Wno-unterminated-string-initialization//g' "$MBEDTLS_MAKEFILE"
-            sed -i 's/-Wno-shift-count-overflow//g' "$MBEDTLS_MAKEFILE"
-            sed -i 's/-Wno-array-bounds//g' "$MBEDTLS_MAKEFILE"
+            # 修改版本为 3.5.2
+            sed -i 's/PKG_VERSION:=3.6.5/PKG_VERSION:=3.5.2/g' "$MBEDTLS_MAKEFILE"
+            sed -i 's/PKG_HASH:=.*/PKG_HASH:=0d0287e1f9d014a2a28836e269258bca839f9a95e4d9d3a4d8265019609b945/g' "$MBEDTLS_MAKEFILE"
             
-            # 确保添加 -Wno-error 以避免警告变成错误
-            if ! grep -q "CMAKE_OPTIONS.*-Wno-error" "$MBEDTLS_MAKEFILE"; then
-                sed -i '/CMAKE_OPTIONS +=/ s/$/ -Wno-error/' "$MBEDTLS_MAKEFILE"
-            fi
+            # 修改下载 URL
+            sed -i 's|https://github.com/Mbed-TLS/mbedtls/archive/.*\.tar.gz|https://github.com/Mbed-TLS/mbedtls/archive/refs/tags/v3.5.2.tar.gz|g' "$MBEDTLS_MAKEFILE"
             
-            # 添加 FORTIFY_SOURCE 禁用标志
-            if ! grep -q "U_FORTIFY_SOURCE" "$MBEDTLS_MAKEFILE"; then
-                sed -i '/CMAKE_OPTIONS +=/a \\ -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0' "$MBEDTLS_MAKEFILE"
-            fi
+            echo "✓ mbedtls 已降级到 3.5.2"
         fi
+        
+        # 清理旧的构建目录
+        rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls-*
+        echo "✓ 已清理旧的 mbedtls 构建目录"
 
     - name: Install Feeds(安装feeds)
       run: |
