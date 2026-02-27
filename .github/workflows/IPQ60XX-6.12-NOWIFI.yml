@@ -89,6 +89,23 @@ jobs:
         ccache: false
         mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
         prefix: ${{ env.OPENWRT_PATH }}
+
+    - name: Fix Missing Dependencies(修复缺失依赖)
+      run: |
+        cd $OPENWRT_PATH
+    
+        grep -q "CONFIG_PACKAGE_libparted=y" .config || echo "CONFIG_PACKAGE_libparted=y" >> .config
+    
+        grep -q "CONFIG_PACKAGE_boost-system=y" .config || echo "CONFIG_PACKAGE_boost-system=y" >> .config
+    
+
+        grep -q "CONFIG_PACKAGE_shadowsocks-libev-ss-local=y" .config || echo "CONFIG_PACKAGE_shadowsocks-libev-ss-local=y" >> .config
+        grep -q "CONFIG_PACKAGE_shadowsocks-libev-ss-redir=y" .config || echo "CONFIG_PACKAGE_shadowsocks-libev-ss-redir=y" >> .config
+        grep -q "CONFIG_PACKAGE_shadowsocks-libev-ss-server=y" .config || echo "CONFIG_PACKAGE_shadowsocks-libev-ss-server=y" >> .config
+
+        grep -q "CONFIG_PACKAGE_python3-pysocks=y" .config || echo "CONFIG_PACKAGE_python3-pysocks=y" >> .config
+        grep -q "CONFIG_PACKAGE_python3-unidecode=y" .config || echo "CONFIG_PACKAGE_python3-unidecode=y" >> .config
+    
     
     - name: Install Feeds(安装feeds)
       run: |
