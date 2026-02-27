@@ -1,21 +1,7 @@
 #!/bin/bash
-# ============================================
-# OpenWrt IPQ6018 DIY 自动配置脚本 (增强版)
-# 适配源码: LiBwrt/openwrt-6.x (main-nss 分支)
-# 平台: Qualcomm IPQ6018 (NOWIFI/EMMC 版本)
-# 内核: 6.12 (已修复版本)
-# 优化: 自动修复 GCC 14 + mbedtls 冲突、自动更新 Golang
-# ============================================
 
 set -euo pipefail
 
-echo "🚀 OpenWrt IPQ6018 DIY 配置脚本 (增强版)"
-echo "=========================================="
-echo ""
-
-# ============================================
-# 1. 环境检查
-# ============================================
 echo "📋 步骤 1/20: 环境检查..."
 
 # 检查必要的变量
@@ -34,6 +20,28 @@ if [[ -z "${FIRMWARE_TAG:-}" ]]; then
         exit 1
     fi
 fi
+
+echo "🔧 修复 Feeds 依赖关系..."
+echo ""
+
+# 删除有依赖问题的包（在 Feeds 更新之前执行）
+if [[ -d "package/trojan-plus" ]]; then
+    echo "删除 package/trojan-plus（依赖 boost-system）"
+    rm -rf package/trojan-plus 2>/dev/null || true
+fi
+
+if [[ -d "package/luci-app-ssr-plus" ]]; then
+    echo "删除 package/luci-app-ssr-plus（依赖 shadowsocks-libev-ss-*）"
+    rm -rf package/luci-app-ssr-plus 2>/dev/null || true
+fi
+
+if [[ -d "package/luci-app-nikki" ]]; then
+    echo "删除 package/luci-app-nikki（依赖 nikki）"
+    rm -rf package/luci-app-nikki 2>/dev/null || true
+fi
+
+echo "✅ Feeds 依赖问题已修复"
+echo ""
 
 # 检查当前目录是否为 OpenWrt 根目录
 if [[ ! -f "rules.mk" || ! -f "Config.in" ]]; then
