@@ -361,7 +361,7 @@ if [[ -f ".config" ]]; then
         "CONFIG_TARGET_INITRAMFS" "ddns" "LSUSB" "mihomo" "smartdns" "kucat" "bootstrap"
     )
 
-    [[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("usb" "wpad" "hostapd")
+    [[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd")
     [[ $FIRMWARE_TAG != *"EMMC"* ]] && keywords_to_delete+=("samba" "autosamba" "disk")
 
     for keyword in "${keywords_to_delete[@]}"; do
