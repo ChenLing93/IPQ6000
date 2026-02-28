@@ -722,6 +722,13 @@ echo ""
 
 sed -i 's/^[[:space:]]\{1,\}/\t/' package/emortal/default-settings/Makefile
 
+sed -i 's/^[[:space:]]\{1,\}/\t/' package/emortal/default-settings/Makefile
+
+# 修复后
+if [[ -f "package/emortal/default-settings/Makefile" ]]; then
+    sed -i 's/^[[:space:]]\{1,\}/\t/' package/emortal/default-settings/Makefile || true
+fi
+
 # ============================================
 # 17. CMake 配置修复
 # ============================================
