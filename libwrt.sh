@@ -1,15 +1,14 @@
 #!/bin/bash
-
 set -euo pipefail
 
 echo "📋 步骤 1/20: 环境检查..."
 
 # 检查必要的变量
 if [[ -z "${FIRMWARE_TAG:-}" ]]; then
-    echo "⚠️  警告: FIRMWARE_TAG 环境变量未设置"
+    echo "⚠️ 警告: FIRMWARE_TAG 环境变量未设置"
     echo "📝 请设置 FIRMWARE_TAG，例如："
-    echo "   export FIRMWARE_TAG=IPQ6018-NOWIFI"
-    echo "   export FIRMWARE_TAG=IPQ6018-EMMC"
+    echo " export FIRMWARE_TAG=IPQ6018-NOWIFI"
+    echo " export FIRMWARE_TAG=IPQ6018-EMMC"
     echo ""
     # 尝试从 GitHub Actions 环境推断
     if [[ -n "${GITHUB_ENV:-}" ]]; then
@@ -61,28 +60,20 @@ if [[ -f "include/version.mk" ]]; then
         SOURCE_TYPE="openwrt"
     fi
 else
-    echo "⚠️  警告: 无法检测源码类型，假设为 OpenWrt"
+    echo "⚠️ 警告: 无法检测源码类型，假设为 OpenWrt"
     SOURCE_TYPE="openwrt"
 fi
 
-echo "   源码类型: $SOURCE_TYPE"
-echo "   FIRMWARE_TAG: $FIRMWARE_TAG"
+echo " 源码类型: $SOURCE_TYPE"
+echo " FIRMWARE_TAG: $FIRMWARE_TAG"
 echo ""
-
-# ============================================
-# 2. 修改默认IP
-# ============================================
-echo "📍 步骤 2/20: 修改默认 IP..."
-
-# 注释掉 10.0.0.1 的修改，保留 192.168.5.1
-# sed -i 's/192.168.1.1/10.0.0.1/g' package/base-files/files/bin/config_generate
 
 if [[ -f "package/base-files/files/bin/config_generate" ]]; then
     sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate || true
     sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/etc/config/network || true
     echo "✅ 默认 IP 已修改为 192.168.5.1"
 else
-    echo "⚠️  警告: config_generate 文件不存在，跳过 IP 修改"
+    echo "⚠️ 警告: config_generate 文件不存在，跳过 IP 修改"
 fi
 
 echo ""
@@ -108,13 +99,13 @@ UPDATE_PACKAGE() {
     if [[ $PKG_REPO == http* ]]; then
         local REPO_NAME=$(echo $PKG_REPO | awk -F '/' '{gsub(/\.git$/, "", $NF); print $NF}')
         git clone --depth=1 --single-branch --branch $PKG_BRANCH "$PKG_REPO" package/$REPO_NAME 2>/dev/null || {
-            echo "⚠️  警告: 克隆 $REPO_NAME 失败，跳过"
+            echo "⚠️ 警告: 克隆 $REPO_NAME 失败，跳过"
             return 1
         }
     else
         local REPO_NAME=$(echo $PKG_REPO | cut -d '/' -f 2)
         git clone --depth=1 --single-branch --branch $PKG_BRANCH "https://github.com/$PKG_REPO.git" package/$REPO_NAME 2>/dev/null || {
-            echo "⚠️  警告: 克隆 $REPO_NAME 失败，跳过"
+            echo "⚠️ 警告: 克隆 $REPO_NAME 失败，跳过"
             return 1
         }
     fi
@@ -149,7 +140,7 @@ if [[ -f "package/feeds/packages/fatresize/Makefile" ]]; then
     echo "修复 fatresize 依赖: libparted"
     # 检查 libparted 是否存在，不存在则从源码编译
     if ! find feeds/ -name "*libparted*" -type d | grep -q .; then
-        echo "⚠️  警告: libparted 不存在，fatresize 可能编译失败"
+        echo "⚠️ 警告: libparted 不存在，fatresize 可能编译失败"
     fi
 fi
 
@@ -223,7 +214,8 @@ fi
 
 echo "✅ 有问题的包已禁用"
 echo ""
-echo "🛠️  步骤 4/20: 安装基础工具..."
+
+echo "🛠️ 步骤 4/20: 安装基础工具..."
 
 UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master" "" || true
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main" "" || true
@@ -328,14 +320,14 @@ rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname parted -pru
 
 mkdir -p package/luci-app-diskman
 wget -q https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/applications/luci-app-diskman/Makefile -O package/luci-app-diskman/Makefile || {
-    echo "⚠️  警告: 下载 luci-app-diskman Makefile 失败"
+    echo "⚠️ 警告: 下载 luci-app-diskman Makefile 失败"
 }
 sed -i 's/fs-ntfs /fs-ntfs3 /g' package/luci-app-diskman/Makefile 2>/dev/null || true
 sed -i '/ntfs-3g-utils /d' package/luci-app-diskman/Makefile 2>/dev/null || true
 
 mkdir -p package/parted
 wget -q https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O package/parted/Makefile || {
-    echo "⚠️  警告: 下载 parted Makefile 失败"
+    echo "⚠️ 警告: 下载 parted Makefile 失败"
 }
 
 echo "✅ 磁盘管理工具已安装"
@@ -369,7 +361,7 @@ if [[ -f ".config" ]]; then
     sed -i "/^CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_/{ /$keep_pattern/!d }" ./.config 2>/dev/null || true
     echo "✅ 设备筛选完成"
 else
-    echo "⚠️  警告: .config 文件不存在，跳过设备筛选"
+    echo "⚠️ 警告: .config 文件不存在，跳过设备筛选"
 fi
 
 echo ""
@@ -433,7 +425,7 @@ if [[ -f ".config" ]]; then
     echo "✅ USB 2.0 配置已添加"
     echo "✅ USB 通用配置已添加"
 else
-    echo "⚠️  警告: .config 文件不存在，跳过 USB 配置"
+    echo "⚠️ 警告: .config 文件不存在，跳过 USB 配置"
 fi
 
 echo ""
@@ -445,9 +437,22 @@ echo "🧹 步骤 11/20: 清理不需要的软件包..."
 
 if [[ -f ".config" ]]; then
     keywords_to_delete=(
-        "xiaomi_ax3600" "xiaomi_ax9000" "xiaomi_ax1800" "glinet" "jdcloud_ax6600"
-        "mr7350" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn"
-        "CONFIG_TARGET_INITRAMFS" "ddns" "LSUSB" "mihomo" "smartdns" "kucat" "bootstrap"
+        "xiaomi_ax3600"
+        "xiaomi_ax9000"
+        "xiaomi_ax1800"
+        "glinet"
+        "jdcloud_ax6600"
+        "mr7350"
+        "uugamebooster"
+        "luci-app-wol"
+        "luci-i18n-wol-zh-cn"
+        "CONFIG_TARGET_INITRAMFS"
+        "ddns"
+        "LSUSB"
+        "mihomo"
+        "smartdns"
+        "kucat"
+        "bootstrap"
     )
 
     [[ $FIRMWARE_TAG == *"NOWIFI"* ]] && keywords_to_delete+=("wpad" "hostapd")
@@ -459,7 +464,7 @@ if [[ -f ".config" ]]; then
 
     echo "✅ 配置清理完成"
 else
-    echo "⚠️  警告: .config 文件不存在，跳过配置清理"
+    echo "⚠️ 警告: .config 文件不存在，跳过配置清理"
 fi
 
 echo ""
@@ -467,7 +472,7 @@ echo ""
 # ============================================
 # 12. 软件包配置项 (写入 .config)
 # ============================================
-echo "⚙️  步骤 12/20: 写入软件包配置项..."
+echo "⚙️ 步骤 12/20: 写入软件包配置项..."
 
 provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-zerotier=y"
@@ -518,7 +523,6 @@ if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
         "CONFIG_PACKAGE_hostapd-common=n"
         "CONFIG_PACKAGE_wpad-openssl=n"
     )
-
     echo "[NOWIFI] preparing nowifi dtsi files..."
     for dtsi in ipq6018-nowifi.dtsi ipq8074-nowifi.dtsi; do
         if [[ -f "${GITHUB_WORKSPACE:-}/scripts/$dtsi" ]]; then
@@ -532,7 +536,6 @@ if [[ $FIRMWARE_TAG == *"NOWIFI"* ]]; then
             echo "[NOWIFI][WARNING] scripts/$dtsi not found, skipping..."
         fi
     done
-
     find "$DTS_PATH" -type f ! -iname '*nowifi*' -exec sed -i \
         -e '/#include "ipq6018.dtsi"/a #include "ipq6018-nowifi.dtsi"' \
         -e '/#include "ipq8074.dtsi"/a #include "ipq8074-nowifi.dtsi"' {} + 2>/dev/null || true
@@ -618,7 +621,7 @@ if [[ -f ".config" ]]; then
     done
     echo "✅ 软件包配置项已写入"
 else
-    echo "⚠️  警告: .config 文件不存在，跳过配置项写入"
+    echo "⚠️ 警告: .config 文件不存在，跳过配置项写入"
 fi
 
 echo ""
@@ -628,13 +631,10 @@ echo ""
 # ============================================
 if [[ "$FIRMWARE_TAG" != *"EMMC"* && "$FIRMWARE_TAG" == *"NOWIFI"* && "$FIRMWARE_TAG" != *"IPQ807X"* ]]; then
     echo "🔨 步骤 13/20: 删除 WiFi 相关补丁 (NOWIFI)..."
-
     sed -i 's/\s*kmod-[^ ]*ath11k[^ ]*\s*\\\?//g' ./target/linux/qualcommax/Makefile 2>/dev/null || true
-
     rm -f package/kernel/mac80211/patches/nss/ath11k/999-902-ath11k-fix-WDS-by-disabling-nwds.patch 2>/dev/null || true
     rm -f package/kernel/mac80211/patches/nss/subsys/999-775-wifi-mac80211-Changes-for-WDS-MLD.patch 2>/dev/null || true
     rm -f package/kernel/mac80211/patches/nss/subsys/999-922-mac80211-fix-null-chanctx-warning-for-NSS-dynamic-VLAN.patch 2>/dev/null || true
-
     echo "✅ USB 和 WiFi 相关补丁已删除"
 else
     echo "📝 跳过删除补丁步骤 (非 NOWIFI 版本)"
@@ -701,15 +701,15 @@ if [[ -n "${GITHUB_WORKSPACE:-}" && -d "${GITHUB_WORKSPACE}/scripts" ]]; then
 
             # 修改 Makefile 以安装自定义 feeds 配置
             if [[ -f "package/emortal/default-settings/Makefile" ]]; then
-                sed -i "/define Package\/default-settings\/install/a\\ \\t\$(INSTALL_DIR) \$(1)/etc\\n\ \t\$(INSTALL_DATA) ./files/99-distfeeds.conf \$(1)/etc/99-distfeeds.conf\n" "package/emortal/default-settings/Makefile" 2>/dev/null || true
+                sed -i "/define Package\/default-settings\/install/a\\ \\\t\\\$(INSTALL_DIR) \\\$(1)/etc\\n\\\t\\\$(INSTALL_DATA) ./files/99-distfeeds.conf \\\$(1)/etc/99-distfeeds.conf\\n" "package/emortal/default-settings/Makefile" 2>/dev/null || true
 
                 # 修改 default-settings 脚本以应用自定义 feeds 配置
                 if [[ -f "package/emortal/default-settings/files/99-default-settings" ]]; then
-                    sed -i "/exit 0/i\\ [ -f \'/etc/99-distfeeds.conf\' ] && mv \'/etc/99-distfeeds.conf\' \'/etc/opkg/distfeeds.conf\'\n\ sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" "package/emortal/default-settings/files/99-default-settings" 2>/dev/null || true
+                    sed -i "/exit 0/i\\ \\\t[ -f '/etc/99-distfeeds.conf' ] && mv '/etc/99-distfeeds.conf' '/etc/opkg/distfeeds.conf'\\n\\\tsed -ri '/check_signature/s@^[^#]@#&@' /etc/opkg.conf\\n" "package/emortal/default-settings/files/99-default-settings" 2>/dev/null || true
                 fi
             fi
         else
-            echo "⚠️  警告: package/emortal/default-settings 不存在，跳过 feeds 配置"
+            echo "⚠️ 警告: package/emortal/default-settings 不存在，跳过 feeds 配置"
         fi
     fi
 
@@ -735,7 +735,7 @@ if [[ -f "include/cmake.mk" ]]; then
         echo "✅ CMake 配置已存在，跳过修复"
     fi
 else
-    echo "⚠️  警告: cmake.mk 不存在，跳过修复"
+    echo "⚠️ 警告: cmake.mk 不存在，跳过修复"
 fi
 
 echo ""
@@ -746,6 +746,7 @@ echo ""
 echo "🔧 步骤 18/20: 修复 Rust 编译..."
 
 RUST_FILE=$(find ./feeds/packages/ -maxdepth 3 -type f -wholename "*/rust/Makefile" 2>/dev/null)
+
 if [ -f "$RUST_FILE" ]; then
     echo "修复 Rust Makefile..."
     sed -i 's/ci-llvm=true/ci-llvm=false/g' "$RUST_FILE" 2>/dev/null || true
@@ -753,53 +754,83 @@ if [ -f "$RUST_FILE" ]; then
     # 检查是否存在 rust-makefile.patch
     if [[ -f "${GITHUB_WORKSPACE:-}/scripts/rust-makefile.patch" ]]; then
         patch "$RUST_FILE" "${GITHUB_WORKSPACE}/scripts/rust-makefile.patch" 2>/dev/null || {
-            echo "⚠️  警告: Rust Makefile patch 应用失败"
+            echo "⚠️ 警告: Rust Makefile patch 应用失败"
         }
     fi
 
     echo "✅ Rust 编译已修复"
 else
-    echo "⚠️  警告: 未找到 Rust Makefile，跳过修复"
+    echo "⚠️ 警告: 未找到 Rust Makefile，跳过修复"
 fi
 
 echo ""
 
 # ============================================
-# 19. 彻底解决 GCC 14 + mbedtls target mismatch 问题 (增强版)
+# 19. 彻底解决 GCC 14 + mbedtls target mismatch 问题 (完整版)
 # ============================================
-echo "🔧 步骤 19/20: 修复 GCC 14 + mbedtls 冲突..."
+echo "🔧 步骤 19/20: 修复 GCC 14 + mbedtls 冲突（完整版）..."
+echo "Executing Complete Hard-fix for mbedtls GCC 14 + ARMv8..."
 
-echo "Executing Enhanced Hard-fix for mbedtls GCC 14..."
-
-# 1. 修改 Makefile 注入：确保 -U 在最末尾，强制覆盖环境中的 _FORTIFY_SOURCE
+# 1. 修复 _FORTIFY_SOURCE 问题（保留你原有的逻辑）
 MBEDTLS_MAKEFILES=$(find . -path "*/libs/mbedtls/Makefile" 2>/dev/null)
 for mk in $MBEDTLS_MAKEFILES; do
-    echo "Hard-patching $mk"
-    # 移除可能存在的旧注入，避免重复
+    echo "Patching mbedtls Makefile: $mk"
     sed -i 's/-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0//g' "$mk"
-    # 在 TARGET_CFLAGS 赋值行末尾精准注入
     sed -i '/TARGET_CFLAGS +=/ s/$/ -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0/' "$mk"
-    # 针对 CMake 编译体系（mbedtls 3.x）强制传递参数
     if ! grep -q "CMAKE_C_FLAGS" "$mk"; then
-        sed -i '/CMAKE_OPTIONS +=/a \ -DCMAKE_C_FLAGS="$(TARGET_CFLAGS) -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"' "$mk"
+        sed -i '/CMAKE_OPTIONS +=/a \ \t-DCMAKE_C_FLAGS="$(TARGET_CFLAGS) -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"' "$mk"
     fi
 done
 
-# 2. 全局保底：直接修改 OpenWrt 核心的安全定义文件
+# 2. 【关键新增】禁用 ARMv8 硬件加速特性
+for mk in $MBEDTLS_MAKEFILES; do
+    echo "Disabling ARMv8 hardware acceleration in: $mk"
+    
+    # 确保在 CMAKE_OPTIONS 中添加禁用选项
+    if grep -q "CMAKE_OPTIONS" "$mk"; then
+        sed -i '/CMAKE_OPTIONS +=/ a \ \t-DMBEDTLS_ARMV8CE_AES_C=OFF' "$mk"
+    else
+        sed -i '/CMAKE_OPTIONS +=/a CMAKE_OPTIONS += -DMBEDTLS_ARMV8CE_AES_C=OFF' "$mk"
+    fi
+    
+    # 禁用其他可能触发硬件加速的特性
+    sed -i '/CMAKE_OPTIONS +=/a \ \t-DMBEDTLS_AESCE_C=OFF' "$mk"
+    sed -i '/CMAKE_OPTIONS +=/a \ \t-DMBEDTLS_PADLOCK_C=OFF' "$mk"
+done
+
+# 3. 修改全局 hardened.mk（保留你原有的逻辑）
 if [ -f "include/hardened.mk" ]; then
-    echo "Patching global hardened.mk to prevent GCC 14 inlining errors"
+    echo "Patching global hardened.mk"
     sed -i 's/-D_FORTIFY_SOURCE=1/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
     sed -i 's/-D_FORTIFY_SOURCE=2/-D_FORTIFY_SOURCE=0/g' include/hardened.mk
 fi
 
-# 3. 注入全局 local.mk (保持你现有的这步，它是很好的保底)
+# 4. 注入全局 local.mk（保留你原有的逻辑）
 mkdir -p include
-echo "TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0" >> include/local.mk
+if ! grep -q "FORTIFY_SOURCE" include/local.mk; then
+    echo "TARGET_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0" >> include/local.mk
+fi
 
-# 4. 特殊处理：针对 aarch64 的汇编冲突
-export EXTRA_CFLAGS="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"
+# 5. 【新增】创建 mbedtls 补丁文件（保底方案）
+MBEDTLS_PATCH_DIR="package/libs/mbedtls/patches"
+mkdir -p "$MBEDTLS_PATCH_DIR"
 
-echo "✅ mbedtls GCC 14 fix applied successfully."
+cat > "$MBEDTLS_PATCH_DIR/100-disable-armv8-hwacc.patch" << 'EOF'
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -237,6 +237,9 @@ if(NOT MBEDTLS_PSA_CRYPTO_CONFIG)
+     add_subdirectory(library)
+ endif()
+ 
++# Disable ARMv8 hardware acceleration for compatibility
++set(MBEDTLS_ARMV8CE_AES_C OFF)
++
+ if(NOT DISABLE_PROGRAMS)
+     add_subdirectory(programs)
+ endif()
+EOF
+
+echo "✅ mbedtls GCC 14 + ARMv8 fix applied successfully (完整版)."
 echo ""
 
 # ============================================
@@ -813,7 +844,7 @@ patch_openwrt_go_fixed() {
     GO_MAKEFILE=$(find feeds -name "Makefile" | grep "lang/golang/golang/Makefile" | head -n 1)
 
     if [ -z "$GO_MAKEFILE" ]; then
-        echo "⚠️  警告: 未找到 OpenWrt Go Makefile，跳过更新"
+        echo "⚠️ 警告: 未找到 OpenWrt Go Makefile，跳过更新"
         return 0
     fi
 
@@ -848,6 +879,7 @@ patch_openwrt_go_fixed() {
     echo "--------------------------------------"
     grep -E "^PKG_VERSION|^PKG_HASH" "$GO_MAKEFILE"
     echo "--------------------------------------"
+
     echo "✅ OpenWrt Go 工具链已固定为 $FIXED_VER"
 }
 
@@ -859,29 +891,31 @@ echo ""
 # ============================================
 # 完成
 # ============================================
-echo "=========================================="
+echo "========================================="
 echo "✅ DIY 配置完成！"
 echo ""
 echo "📝 配置摘要："
-echo "   源码类型: $SOURCE_TYPE"
-echo "   FIRMWARE_TAG: $FIRMWARE_TAG"
-echo "   已安装工具: PassWall, OpenClash, Tailscale, AdGuardHome, WireGuard 等"
-echo "   已修复问题: GCC 14 + mbedtls 冲突、Rust 编译、CMake 配置"
-echo "   已更新工具: Go 工具链（自动更新到最新版本）"
+echo " 源码类型: $SOURCE_TYPE"
+echo " FIRMWARE_TAG: $FIRMWARE_TAG"
+echo " 已安装工具: PassWall, OpenClash, Tailscale, AdGuardHome, WireGuard 等"
+echo " 已修复问题: GCC 14 + mbedtls 冲突、Rust 编译、CMake 配置"
+echo " 已更新工具: Go 工具链（自动更新到最新版本）"
 echo ""
 echo "🚀 下一步操作："
+
 if [[ -n "${GITHUB_WORKSPACE:-}" ]]; then
-    echo "   GitHub Actions 将自动继续执行后续步骤"
+    echo " GitHub Actions 将自动继续执行后续步骤"
 else
-    echo "   1. 重新生成配置："
-    echo "      make defconfig"
+    echo " 1. 重新生成配置："
+    echo " make defconfig"
     echo ""
-    echo "   2. 开始编译固件："
-    echo "      make -j\$(nproc) V=s"
+    echo " 2. 开始编译固件："
+    echo " make -j\$(nproc) V=s"
 fi
+
 echo ""
 echo "🔧 如果遇到编译错误，请检查："
-echo "   1. 磁盘空间是否充足（建议至少 20GB）"
-echo "   2. 网络连接是否正常"
-echo "   3. 主机环境依赖是否完整"
+echo " 1. 磁盘空间是否充足（建议至少 20GB）"
+echo " 2. 网络连接是否正常"
+echo " 3. 主机环境依赖是否完整"
 echo ""
