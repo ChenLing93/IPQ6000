@@ -91,18 +91,6 @@ jobs:
           mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
           prefix: ${{ env.OPENWRT_PATH }}
 
-      - name: Fix Missing Dependencies(修复缺失依赖)
-        run: |
-          cd $OPENWRT_PATH
-          # 显式禁用导致编译失败的包
-          sed -i 's/CONFIG_PACKAGE_fatresize=y/CONFIG_PACKAGE_fatresize=n/g' .config
-          sed -i 's/CONFIG_PACKAGE_onionshare-cli=y/CONFIG_PACKAGE_onionshare-cli=n/g' .config
-          echo "CONFIG_PACKAGE_fatresize=n" >> .config
-          echo "CONFIG_PACKAGE_onionshare-cli=n" >> .config
-          echo "CONFIG_PACKAGE_python3-pysocks=n" >> .config
-          echo "CONFIG_PACKAGE_python3-unidecode=n" >> .config
-          # 确保必要的依赖被选中
-          grep -q "CONFIG_PACKAGE_libparted=y" .config || echo "CONFIG_PACKAGE_libparted=y" >> .config
 
       - name: Install Feeds(安装feeds)
         run: |
@@ -110,59 +98,18 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      # ============================================
-      # [新增] 强制修复 Mbedtls (替换为稳定版 2.28.x)
-      # ============================================
-      - name: Force Fix Mbedtls(强制替换 Mbedtls 源码)
-        run: |
-          echo "🔧 Starting Mbedtls Force Fix..."
-          cd $OPENWRT_PATH
-          
-          # 1. 彻底删除旧的 mbedtls 目录 (包括 package 和 feeds 中的)
-          echo "🗑️ Removing old mbedtls (3.6.5)..."
-          rm -rf package/libs/mbedtls
-          rm -rf feeds/packages/libs/mbedtls
-          
-          # 2. 从 OpenWrt 23.05 分支克隆稳定的 mbedtls 2.28.x
-          echo "⬇️ Cloning stable mbedtls 2.28.x from OpenWrt 23.05..."
-          if git clone --depth=1 --branch openwrt-23.05 https://git.openwrt.org/openwrt/openwrt.git /tmp/openwrt-stable; then
-              if [ -d "/tmp/openwrt-stable/package/libs/mbedtls" ]; then
-                  mv /tmp/openwrt-stable/package/libs/mbedtls package/libs/mbedtls
-                  echo "✅ Mbedtls replaced successfully."
-                  
-                  # 验证版本
-                  if grep -q "PKG_VERSION:=2.28" package/libs/mbedtls/Makefile; then
-                      echo "✅ Verified: Version is 2.28.x"
-                  else
-                      echo "⚠️ Warning: Version check failed, but proceeding..."
-                  fi
-              else
-                  echo "❌ Error: mbedtls directory not found in cloned repo!"
-                  exit 1
-              fi
-              rm -rf /tmp/openwrt-stable
-          else
-              echo "❌ Error: Failed to clone stable repository!"
-              exit 1
-          fi
-          
-          # 3. 清理构建缓存，防止 make 使用旧文件
-          echo "🧹 Cleaning build cache..."
-          rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls-*
-          rm -rf build_dir/host/mbedtls-*
-          rm -rf staging_dir/target-aarch64_cortex-a53_musl/stamp/.mbedtls*
-          rm -rf staging_dir/host/stamp/.mbedtls*
-          
-          echo "✅ Mbedtls Force Fix Completed."
-      # ============================================
 
       - name: Load Custom Configuration(加载自定义配置)
         run: |
           [ -e files ] && mv files $OPENWRT_PATH/files
           [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
           chmod +x $DIY_SCRIPT
+          chmod +x $GITHUB_WORKSPACE/scripts/*.sh
           cd $OPENWRT_PATH
           $GITHUB_WORKSPACE/$DIY_SCRIPT
+          echo "修复 mbedtls GCC14 内联编译错误"
+          $GITHUB_WORKSPACE/scripts/mbedtls.sh
+          echo "执行完毕"
 
       - name: Download DL Package(下载DL软件包)
         run: |
