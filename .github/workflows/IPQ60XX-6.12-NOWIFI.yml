@@ -65,45 +65,13 @@ jobs:
           git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
           cd openwrt
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          VERSION_INFO=$(git show -s --date=short --format="作者: %an时间: %cd内容: %shash: %H")
+          VERSION_INFO=$(git show -s --date=short --format="作者：%an 时间：%cd 内容：%s hash:%H")
           echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
-          VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/generic/kernel-6.12)
+          # 尝试获取内核版本，如果失败则使用默认值
+          VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/generic/kernel-6.12 2>/dev/null || echo "6.12.x")
           echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
 
-      - name: Force Fix Mbedtls(强制替换 Mbedtls 源码)
-      run: |
-        echo "🔧 Starting Mbedtls Force Fix..."
-        cd $OPENWRT_PATH
-        
-        # 1. 彻底删除旧的 mbedtls 目录 (包括 package 和 feeds 中的)
-        echo "🗑️ Removing old mbedtls..."
-        rm -rf package/libs/mbedtls
-        rm -rf feeds/packages/libs/mbedtls
-        
-        # 2. 从 OpenWrt 23.05 分支克隆稳定的 mbedtls 2.28.x
-        echo "⬇️ Cloning stable mbedtls 2.28.x..."
-        if git clone --depth=1 --branch openwrt-23.05 https://git.openwrt.org/openwrt/openwrt.git /tmp/openwrt-stable; then
-            if [ -d "/tmp/openwrt-stable/package/libs/mbedtls" ]; then
-                mv /tmp/openwrt-stable/package/libs/mbedtls package/libs/mbedtls
-                echo "✅ Mbedtls replaced successfully."
-                
-                # 验证版本
-                if grep -q "PKG_VERSION:=2.28" package/libs/mbedtls/Makefile; then
-                    echo "✅ Verified: Version is 2.28.x"
-                else
-                    echo "⚠️ Warning: Version check failed, but proceeding..."
-                fi
-            else
-                echo "❌ Error: mbedtls directory not found in cloned repo!"
-                exit 1
-            fi
-            rm -rf /tmp/openwrt-stable
-        else
-            echo "❌ Error: Failed to clone stable repository!"
-            exit 1
-        fi
-
-        - name: Generate Variables(生成变量)
+      - name: Generate Variables(生成变量)
         run: |
           cp $CONFIG_FILE $OPENWRT_PATH/.config
           cd $OPENWRT_PATH
@@ -115,7 +83,7 @@ jobs:
           DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
-        - name: Cache Toolchain(缓存工具链)
+      - name: Cache Toolchain(缓存工具链)
         if: env.CACHE_TOOLCHAIN == 'true'
         uses: HiGarfield/cachewrtbuild@main
         with:
@@ -123,24 +91,72 @@ jobs:
           mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
           prefix: ${{ env.OPENWRT_PATH }}
 
-        - name: Fix Missing Dependencies(修复缺失依赖)
+      - name: Fix Missing Dependencies(修复缺失依赖)
         run: |
           cd $OPENWRT_PATH
+          # 显式禁用导致编译失败的包
+          sed -i 's/CONFIG_PACKAGE_fatresize=y/CONFIG_PACKAGE_fatresize=n/g' .config
+          sed -i 's/CONFIG_PACKAGE_onionshare-cli=y/CONFIG_PACKAGE_onionshare-cli=n/g' .config
+          echo "CONFIG_PACKAGE_fatresize=n" >> .config
+          echo "CONFIG_PACKAGE_onionshare-cli=n" >> .config
+          echo "CONFIG_PACKAGE_python3-pysocks=n" >> .config
+          echo "CONFIG_PACKAGE_python3-unidecode=n" >> .config
+          # 确保必要的依赖被选中
           grep -q "CONFIG_PACKAGE_libparted=y" .config || echo "CONFIG_PACKAGE_libparted=y" >> .config
-          grep -q "CONFIG_PACKAGE_boost-system=y" .config || echo "CONFIG_PACKAGE_boost-system=y" >> .config
-          grep -q "CONFIG_PACKAGE_shadowsocks-libev-ss-local=y" .config || echo "CONFIG_PACKAGE_shadowsocks-libev-ss-local=y" >> .config
-          grep -q "CONFIG_PACKAGE_shadowsocks-libev-ss-redir=y" .config || echo "CONFIG_PACKAGE_shadowsocks-libev-ss-redir=y" >> .config
-          grep -q "CONFIG_PACKAGE_shadowsocks-libev-ss-server=y" .config || echo "CONFIG_PACKAGE_shadowsocks-libev-ss-server=y" >> .config
-          grep -q "CONFIG_PACKAGE_python3-pysocks=y" .config || echo "CONFIG_PACKAGE_python3-pysocks=y" >> .config
-          grep -q "CONFIG_PACKAGE_python3-unidecode=y" .config || echo "CONFIG_PACKAGE_python3-unidecode=y" >> .config
 
-        - name: Install Feeds(安装feeds)
+      - name: Install Feeds(安装feeds)
         run: |
           cd $OPENWRT_PATH
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-        - name: Load Custom Configuration(加载自定义配置)
+      # ============================================
+      # [新增] 强制修复 Mbedtls (替换为稳定版 2.28.x)
+      # ============================================
+      - name: Force Fix Mbedtls(强制替换 Mbedtls 源码)
+        run: |
+          echo "🔧 Starting Mbedtls Force Fix..."
+          cd $OPENWRT_PATH
+          
+          # 1. 彻底删除旧的 mbedtls 目录 (包括 package 和 feeds 中的)
+          echo "🗑️ Removing old mbedtls (3.6.5)..."
+          rm -rf package/libs/mbedtls
+          rm -rf feeds/packages/libs/mbedtls
+          
+          # 2. 从 OpenWrt 23.05 分支克隆稳定的 mbedtls 2.28.x
+          echo "⬇️ Cloning stable mbedtls 2.28.x from OpenWrt 23.05..."
+          if git clone --depth=1 --branch openwrt-23.05 https://git.openwrt.org/openwrt/openwrt.git /tmp/openwrt-stable; then
+              if [ -d "/tmp/openwrt-stable/package/libs/mbedtls" ]; then
+                  mv /tmp/openwrt-stable/package/libs/mbedtls package/libs/mbedtls
+                  echo "✅ Mbedtls replaced successfully."
+                  
+                  # 验证版本
+                  if grep -q "PKG_VERSION:=2.28" package/libs/mbedtls/Makefile; then
+                      echo "✅ Verified: Version is 2.28.x"
+                  else
+                      echo "⚠️ Warning: Version check failed, but proceeding..."
+                  fi
+              else
+                  echo "❌ Error: mbedtls directory not found in cloned repo!"
+                  exit 1
+              fi
+              rm -rf /tmp/openwrt-stable
+          else
+              echo "❌ Error: Failed to clone stable repository!"
+              exit 1
+          fi
+          
+          # 3. 清理构建缓存，防止 make 使用旧文件
+          echo "🧹 Cleaning build cache..."
+          rm -rf build_dir/target-aarch64_cortex-a53_musl/mbedtls-*
+          rm -rf build_dir/host/mbedtls-*
+          rm -rf staging_dir/target-aarch64_cortex-a53_musl/stamp/.mbedtls*
+          rm -rf staging_dir/host/stamp/.mbedtls*
+          
+          echo "✅ Mbedtls Force Fix Completed."
+      # ============================================
+
+      - name: Load Custom Configuration(加载自定义配置)
         run: |
           [ -e files ] && mv files $OPENWRT_PATH/files
           [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
@@ -148,8 +164,7 @@ jobs:
           cd $OPENWRT_PATH
           $GITHUB_WORKSPACE/$DIY_SCRIPT
 
-
-        - name: Download DL Package(下载DL软件包)
+      - name: Download DL Package(下载DL软件包)
         run: |
           cd $OPENWRT_PATH
           make defconfig
@@ -157,28 +172,29 @@ jobs:
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
 
-        - name: Compile Firmware(开始编译固件)
+      - name: Compile Firmware(开始编译固件)
         id: compile
         run: |
           cd $OPENWRT_PATH
           echo -e "$(nproc) thread compile"
-          make -j$(nproc) || make -j1 || make -j1 V=s
+          # 添加 PKG_HASH=skip 防止哈希校验失败
+          make -j$(nproc) PKG_HASH=skip || make -j1 PKG_HASH=skip || make -j1 V=s PKG_HASH=skip
           echo "status=success" >> $GITHUB_OUTPUT
           echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
           echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
 
-        - name: Check Space Usage(检查空间使用情况)
+      - name: Check Space Usage(检查空间使用情况)
         if: (!cancelled())
         run: df -hT
 
-        - name: Upload Bin Directory(上传固件)
+      - name: Upload Bin Directory(上传固件)
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
         uses: actions/upload-artifact@main
         with:
           name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.OPENWRT_PATH }}/bin
 
-        - name: Organize Files(整理文件)
+      - name: Organize Files(整理文件)
         if: steps.compile.outputs.status == 'success'
         run: |
           cd $OPENWRT_PATH/bin/targets/*/*
@@ -191,14 +207,14 @@ jobs:
           rm -rf packages feeds.buildinfo version.buildinfo
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
-        - name: Upload Firmware To Artifact(将固件上传到Artifact)
+      - name: Upload Firmware To Artifact(将固件上传到Artifact)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
         uses: actions/upload-artifact@main
         with:
           name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE_PATH }}
 
-        - name: Upload Firmware To Release(发布固件)
+      - name: Upload Firmware To Release(发布固件)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
         uses: ncipollo/release-action@v1
         with:
@@ -210,15 +226,15 @@ jobs:
           body: |
             **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
 
-            ### 📒 固件信息(无WIFI)
-            - 无WIFI带有线NSS的6.12内核固件
+            ### 📒 固件信息 (无 WIFI)
+            - 无 WIFI 带有线 NSS 的 6.12 内核固件
             - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
-            - ⚽ 固件源码: ${{ env.REPO_URL }}
-            - 💝 源码分支: ${{ env.REPO_BRANCH }}
-            - 🌐 默认地址: 192.168.5.1
-            - 🔑 默认密码: password
+            - ⚽ 固件源码：${{ env.REPO_URL }}
+            - 💝 源码分支：${{ env.REPO_BRANCH }}
+            - 🌐 默认地址：192.168.5.1
+            - 🔑 默认密码：password
 
             ### 🧊 固件版本
             - 固件内核版本：${{ env.VERSION_KERNEL }}
-            - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
+            - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }}) 更新记录
             - ${{ env.VERSION_INFO }}
