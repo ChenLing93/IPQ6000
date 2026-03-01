@@ -66,27 +66,12 @@ echo "正在配置 CUPS 打印服务..."
 # SmartDNS (保持注释，使用 .config 中的配置)
 # git clone ...
 
-# 修改本地时间格式
 sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/*/index.htm
 
-compile_time=$(date +"%Y-%m-%d %H:%M")
-build_info="编译时间: ${compile_time}"
-
+# 修改版本为编译日期
 date_version=$(date +"%y.%m.%d")
 orig_version=$(cat "package/lean/default-settings/files/zzz-default-settings" | grep DISTRIB_REVISION= | awk -F "'" '{print $2}')
 sed -i "s/${orig_version}/R${date_version} by Haiibo/g" package/lean/default-settings/files/zzz-default-settings
-
-
-for file in package/lean/autocore/files/*/index.htm; do
-  if [ -f "$file" ]; then
-    cp "$file" "$file.bak"
-    if ! grep -q "编译时间" "$file"; then
-       sed -i '/luci\.sys\.nodeinfo\.firmware_version/a\    <tr><td width="33%"><%:编译时间%></td><td>'"${build_info}"'</td></tr>' "$file"
-    fi
-  fi
-done
-
-sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/*/index.htm
 
 # 最终再次更新确保万无一失
 ./scripts/feeds update -a
@@ -96,8 +81,5 @@ sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/fil
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" "package/base-files/files/etc/uci-defaults/99_ttyd-nopass"
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" "package/base-files/files/etc/uci-defaults/99_set_argon_primary"
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99-distfeeds.conf" "package/emortal/default-settings/files/99-distfeeds.conf"
-sed -i "/define Package\/default-settings\/install/a\\ \\t\$(INSTALL_DIR) \$(1)/etc\\n\ \t\$(INSTALL_DATA) ./files/99-distfeeds.conf \$(1)/etc/99-distfeeds.conf\n" "package/emortal/default-settings/Makefile"
-sed -i "/exit 0/i\\ [ -f \'/etc/99-distfeeds.conf\' ] && mv \'/etc/99-distfeeds.conf\' \'/etc/opkg/distfeeds.conf\'\n\ sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" "package/emortal/default-settings/files/99-default-settings"
 
-# 解决 dropbear 配置的 bug
 install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
