@@ -69,10 +69,24 @@ echo "正在配置 CUPS 打印服务..."
 # 修改本地时间格式
 sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/*/index.htm
 
-# 修改版本为编译日期
+compile_time=$(date +"%Y-%m-%d %H:%M")
+build_info="编译时间: ${compile_time}"
+
 date_version=$(date +"%y.%m.%d")
 orig_version=$(cat "package/lean/default-settings/files/zzz-default-settings" | grep DISTRIB_REVISION= | awk -F "'" '{print $2}')
 sed -i "s/${orig_version}/R${date_version} by Haiibo/g" package/lean/default-settings/files/zzz-default-settings
+
+
+for file in package/lean/autocore/files/*/index.htm; do
+  if [ -f "$file" ]; then
+    cp "$file" "$file.bak"
+    if ! grep -q "编译时间" "$file"; then
+       sed -i '/luci\.sys\.nodeinfo\.firmware_version/a\    <tr><td width="33%"><%:编译时间%></td><td>'"${build_info}"'</td></tr>' "$file"
+    fi
+  fi
+done
+
+sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/*/index.htm
 
 # 最终再次更新确保万无一失
 ./scripts/feeds update -a
