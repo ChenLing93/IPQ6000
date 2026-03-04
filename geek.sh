@@ -29,6 +29,10 @@ echo "正在下载 集客AC 控制器 ..."
 # 来源：kenzok8/openwrt-packages (这是一个常用的整合源，包含 gecoos-ac)
 git_sparse_clone master https://github.com/kenzok8/openwrt-packages luci-app-gecoos-ac
 
+# 【新增】Watchcat (网络监控与自动重启)
+echo "正在下载 Watchcat ..."
+git_sparse_clone master https://github.com/kenzok8/openwrt-packages luci-app-watchcat
+
 # 原有插件: Nikki
 git_sparse_clone main https://github.com/nikkinikki-org/OpenWrt-nikki nikki
 git_sparse_clone main https://github.com/nikkinikki-org/OpenWrt-nikki luci-app-nikki
