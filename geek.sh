@@ -27,7 +27,7 @@ function git_sparse_clone() {
 # 【新增】集客 AC 控制器 (Geek AC)
 echo "正在下载 集客AC 控制器 ..."
 # 来源：kenzok8/openwrt-packages (这是一个常用的整合源，包含 gecoos-ac)
-git_sparse_clone master https://github.com/kenzok8/openwrt-packages luci-app-gecoos-ac
+git_sparse_clone master https://github.com/kenzok8/openwrt-packages luci-app-gecoosac
 
 # 【新增】Watchcat (网络监控与自动重启)
 echo "正在下载 Watchcat ..."
@@ -60,9 +60,8 @@ chmod 755 package/luci-app-onliner/root/usr/share/onliner/setnlbw.sh
 echo "正在配置 CUPS 打印服务..."
 #./scripts/feeds install luci-app-cups luci-i18n-cups-zh-cn cups cups-filters
 ./scripts/feeds install luci-app-watchcat istore app-store-ui luci-app-cups cups cups-filters luci-i18n-cups-zh-cn luci-app-ddnsto ddnsto 
-UPDATE_PACKAGE "openwrt-gecoosac" "ChenLing93/luci-app-gecoosac" "main"
 # 如果有 USB 打印机需求，建议也启用内核模块 (可选，需确认 .config 中是否开启)
-# ./scripts/feeds install kmod-usb-printer
+./scripts/feeds install kmod-usb-printer
 
 # -------------------------------------------
 # 其他系统修改
