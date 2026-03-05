@@ -90,7 +90,7 @@ echo ">>> 更新 Feeds 索引..."
 echo ">>> 安装 Feeds 包..."
 # 显式安装列表，确保包含新加入的 autotimeset
 ./scripts/feeds install -a
-./scripts/feeds install luci-app-watchcat istore app-store-ui luci-app-cups cups cups-filters luci-i18n-cups-zh-cn luci-app-ddnsto ddnsto luci-app-onliner luci-app-autotimeset kmod-usb-printer
+./scripts/feeds install  istore app-store-ui luci-app-cups cups cups-filters luci-i18n-cups-zh-cn luci-app-ddnsto ddnsto luci-app-onliner luci-app-autotimeset kmod-usb-printer
 
 # --------------------------------------------------------
 # 5. 其他系统美化与修正
