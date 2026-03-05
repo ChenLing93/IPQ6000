@@ -60,7 +60,7 @@ chmod 755 package/luci-app-onliner/root/usr/share/onliner/setnlbw.sh
 echo "正在配置 CUPS 打印服务..."
 #./scripts/feeds install luci-app-cups luci-i18n-cups-zh-cn cups cups-filters
 ./scripts/feeds install luci-app-watchcat istore app-store-ui luci-app-cups cups cups-filters luci-i18n-cups-zh-cn luci-app-ddnsto ddnsto 
-UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main"
+UPDATE_PACKAGE "openwrt-gecoosac" "ChenLing93/luci-app-gecoosac" "main"
 # 如果有 USB 打印机需求，建议也启用内核模块 (可选，需确认 .config 中是否开启)
 # ./scripts/feeds install kmod-usb-printer
 
