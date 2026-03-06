@@ -133,7 +133,6 @@ fi
 UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master"
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
 UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main"
-UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 UPDATE_PACKAGE "luci-app-ddnsto" "linkease/ddnsto-openwrt" "main"
 UPDATE_PACKAGE "luci-app-store" "linkease/istore" "main" # iStore
@@ -195,8 +194,6 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-ttyd=y"
     "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
     "CONFIG_PACKAGE_ttyd=y"
-    #"CONFIG_PACKAGE_luci-app-ddns-go=y"
-    #"CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-ddnsto=y"
     "CONFIG_PACKAGE_luci-i18n-ddnsto-zh-cn=y"
     "CONFIG_PACKAGE_luci-theme-proton=y"
