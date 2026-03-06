@@ -1,91 +1,147 @@
 #!/bin/bash
 
-# 修改默认IP
+# --------------------------------------------------------
+# 1. 基础系统修改
+# --------------------------------------------------------
+echo ">>> 开始执行 DIY 脚本..."
+
+# 修改默认 IP 为 192.168.5.1
 sed -i 's/192.168.1.1/192.168.5.1/g' package/base-files/files/bin/config_generate
 
-# 安装和更新软件包
+# --------------------------------------------------------
+# 2. 通用克隆与提取函数 (增强版)
+# --------------------------------------------------------
 UPDATE_PACKAGE() {
-    local PKG_NAME=$1
-    local PKG_REPO=$2
-    local PKG_BRANCH=$3
-    local PKG_SPECIAL=$4
+    local PKG_NAME="$1"
+    local PKG_REPO="$2"
+    local PKG_BRANCH="$3"
+    local PKG_SPECIAL="$4"
 
-    # 清理旧的包
+    # 处理包名数组
     read -ra PKG_NAMES <<< "$PKG_NAME"
+
+    # 清理旧的包 (防止冲突)
     for NAME in "${PKG_NAMES[@]}"; do
-        rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname "*$NAME*" -prune)
+        # 清理 feeds 和 package 目录下的旧版本
+        find feeds/luci/ feeds/packages/ package/ -maxdepth 4 -type d -iname "*$NAME*" -exec rm -rf {} \; 2>/dev/null
     done
 
-    # 克隆仓库
+    # 确定仓库 URL
+    local REPO_URL=""
     if [[ $PKG_REPO == http* ]]; then
-        local REPO_NAME=$(echo $PKG_REPO | awk -F '/' '{gsub(/\.git$/, "", $NF); print $NF}')
-        git clone --depth=1 --single-branch --branch $PKG_BRANCH "$PKG_REPO" package/$REPO_NAME
+        REPO_URL="$PKG_REPO"
     else
-        local REPO_NAME=$(echo $PKG_REPO | cut -d '/' -f 2)
-        git clone --depth=1 --single-branch --branch $PKG_BRANCH "https://github.com/$PKG_REPO.git" package/$REPO_NAME
+        REPO_URL="https://github.com/$PKG_REPO.git"
     fi
 
-    # 根据 PKG_SPECIAL 处理包
+    # 提取仓库名称用于临时目录
+    local REPO_NAME=$(echo "$REPO_URL" | awk -F '/' '{gsub(/\.git$/, "", $NF); print $NF}')
+    local TEMP_DIR="./package/_temp_$REPO_NAME"
+
+    echo ">>> 正在克隆: $REPO_URL (分支: $PKG_BRANCH) ..."
+    
+    # 克隆到临时目录
+    if ! git clone --depth=1 --single-branch --branch "$PKG_BRANCH" "$REPO_URL" "$TEMP_DIR" 2>/dev/null; then
+        echo "❌ 错误: 克隆 $REPO_URL 失败!"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+
+    # 根据模式处理包
     case "$PKG_SPECIAL" in
         "pkg")
-            # 提取每个包
+            echo ">>> 正在从 $REPO_NAME 提取多个包: ${PKG_NAMES[*]}"
             for NAME in "${PKG_NAMES[@]}"; do
-                echo "moving $NAME"
-                cp -rf $(find ./package/$REPO_NAME/*/ -maxdepth 3 -type d -iname "*$NAME*" -prune) ./package/
+                # 在临时目录中递归查找包含该包名的目录 (通常包含 Makefile)
+                # 优先查找直接包含 NAME 的目录，且该目录下有 Makefile
+                local FOUND_DIR=$(find "$TEMP_DIR" -type d -name "*$NAME*" -exec test -f "{}/Makefile" \; -print -quit 2>/dev/null)
+                
+                if [ -n "$FOUND_DIR" ]; then
+                    echo "   - 找到并移动: $NAME (路径: $FOUND_DIR)"
+                    cp -rf "$FOUND_DIR" "./package/"
+                else
+                    echo "   ⚠️ 警告: 未在 $REPO_NAME 中找到包含 Makefile 的 $NAME 目录"
+                fi
             done
-            # 删除剩余的包
-            rm -rf ./package/$REPO_NAME/
+            rm -rf "$TEMP_DIR"
             ;;
         "name")
-            # 重命名包
-            mv -f ./package/$REPO_NAME ./package/$PKG_NAME
+            # 重命名模式：直接将整个仓库重命名为第一个包名
+            mv -f "$TEMP_DIR" "./package/$PKG_NAME"
+            echo ">>> 已移动并重命名: $PKG_NAME"
+            ;;
+        *)
+            # 默认模式：如果只传了一个包名，且仓库根目录就是包，直接移动
+            if [ ${#PKG_NAMES[@]} -eq 1 ]; then
+                 mv -f "$TEMP_DIR" "./package/${PKG_NAMES[0]}"
+                 echo ">>> 已移动: ${PKG_NAMES[0]}"
+            else
+                echo "⚠️ 警告: 未指定特殊模式且包名多于一个，默认只移动第一个或忽略。"
+                rm -rf "$TEMP_DIR"
+            fi
             ;;
     esac
 }
 
+# --------------------------------------------------------
+# 3. 下载第三方插件
+# --------------------------------------------------------
+
+# --- 独立插件 ---
 UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master"
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
 UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main"
-#UPDATE_PACKAGE "luci-app-homeproxy" "immortalwrt/homeproxy" "master"
 UPDATE_PACKAGE "luci-app-ddns-go" "sirpdboy/luci-app-ddns-go" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 UPDATE_PACKAGE "luci-app-ddnsto" "linkease/ddnsto-openwrt" "main"
-UPDATE_PACKAGE "luci-app-store" "linkease/istore" "main"
+UPDATE_PACKAGE "luci-app-store" "linkease/istore" "main" # iStore
 UPDATE_PACKAGE "luci-theme-proton" "sirpdboy/luci-theme-proton" "main"
+UPDATE_PACKAGE "luci-app-quickfile" "sbwml/luci-app-quickfile" "main"
+UPDATE_PACKAGE "openwrt-podman" "breeze303/openwrt-podman" "main"
+UPDATE_PACKAGE "frp" "ysuolmai/openwrt-frp" "main"
 
-# small-package
+# --- 大仓库提取 (small-package) ---
+# 包含大量常用科学上网和工具包
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
 naiveproxy shadowsocks-rust v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
 tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
-luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
+luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosbnb \
 taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
-luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
-luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
-luci-app-nikki luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
+quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
+luci-theme-argon luci-app-argon-config netdata luci-app-netdata lucky luci-app-lucky \
+luci-app-openclash mihomo luci-app-nikki luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
 
-# speedtest
-UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
-UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
+# --- sbwml 专用源提取 ---
+UPDATE_PACKAGE "luci-app-netspeedtest speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
 
-UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main"
-UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
-UPDATE_PACKAGE "openwrt-podman" "https://github.com/breeze303/openwrt-podman" "main"
-UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main"
+# --------------------------------------------------------
+# 4. 特殊修补与 DiskMan 安装
+# --------------------------------------------------------
 
-sed -i 's|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-$(ARCH_PACKAGES) $(1)/usr/bin/quickfile|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-aarch64_generic $(1)/usr/bin/quickfile|' package/luci-app-quickfile/quickfile/Makefile
+# 修复 quickfile 架构问题 (针对 aarch64)
+if [ -f "package/luci-app-quickfile/quickfile/Makefile" ]; then
+    echo ">>> 修复 luci-app-quickfile 架构定义..."
+    sed -i 's|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-$(ARCH_PACKAGES) $(1)/usr/bin/quickfile|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-aarch64_generic $(1)/usr/bin/quickfile|' package/luci-app-quickfile/quickfile/Makefile
+fi
 
-rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname luci-app-diskman -prune)
-rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname parted -prune)
-mkdir -p package/luci-app-diskman && \
-wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/applications/luci-app-diskman/Makefile -O package/luci-app-diskman/Makefile
-sed -i 's/fs-ntfs /fs-ntfs3 /g' package/luci-app-diskman/Makefile
-sed -i '/ntfs-3g-utils /d' package/luci-app-diskman/Makefile
-mkdir -p package/parted && \
-wget https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O package/parted/Makefile
+# 安装 DiskMan (手动下载 Makefile)
+echo ">>> 安装 luci-app-diskman 和 parted..."
+rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname "*diskman*" -prune) 2>/dev/null
+rm -rf $(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname "*parted*" -prune) 2>/dev/null
 
-UPDATE_PACKAGE "frp" "https://github.com/ysuolmai/openwrt-frp.git" "main"
+mkdir -p package/luci-app-diskman
+wget -q https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/applications/luci-app-diskman/Makefile -O package/luci-app-diskman/Makefile
+if [ -f "package/luci-app-diskman/Makefile" ]; then
+    sed -i 's/fs-ntfs /fs-ntfs3 /g' package/luci-app-diskman/Makefile
+    sed -i '/ntfs-3g-utils /d' package/luci-app-diskman/Makefile
+fi
 
-# Configuration lines to append to .config
+mkdir -p package/parted
+wget -q https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O package/parted/Makefile
+
+# --------------------------------------------------------
+# 5. 配置文件 (.config) 预设
+# --------------------------------------------------------
 provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-zerotier=y"
     "CONFIG_PACKAGE_luci-i18n-zerotier-zh-cn=y"
@@ -97,8 +153,8 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-ttyd=y"
     "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
     "CONFIG_PACKAGE_ttyd=y"
-    "CONFIG_PACKAGE_luci-app-ddns-go=y"
-    "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
+    #"CONFIG_PACKAGE_luci-app-ddns-go=y"
+    #"CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-ddnsto=y"
     "CONFIG_PACKAGE_luci-i18n-ddnsto-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-store=y"
@@ -117,41 +173,83 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-tailscale=y"
     "CONFIG_PACKAGE_luci-app-gecoosac=y"
     "CONFIG_PACKAGE_luci-app-openclash=y"
+    "CONFIG_PACKAGE_luci-app-autotimeset=y" 
+    "CONFIG_PACKAGE_luci-i18n-autotimeset-zh-cn=y"
 )
 
-DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
+# 针对 IPQ 平台开启 NSS SQM
+if [[ $FIRMWARE_TAG == "IPQ"* ]]; then
+    provided_config_lines+=("CONFIG_PACKAGE_sqm-scripts-nss=y")
+fi
 
-[[ $FIRMWARE_TAG == "IPQ"* ]] && provided_config_lines+=("CONFIG_PACKAGE_sqm-scripts-nss=y")
-
-# Append configuration lines to .config
+# 写入 .config
 for line in "${provided_config_lines[@]}"; do
     echo "$line" >> .config
 done
 
-rm ./target/linux/qualcommax/patches-6.12/0083-v6.11-arm64-dts-qcom-ipq6018-add-sdhci-node.patch
+# --------------------------------------------------------
+# 6. 补丁与文件修正
+# --------------------------------------------------------
 
-# 修复文件
-find ./ -name "getifaddr.c" -exec sed -i 's/return 1;/return 0;/g' {} \;
-sed -i '/\/usr\/bin\/zsh/d' package/base-files/files/etc/profile
-find ./ -name "cascade.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
-find ./ -name "dark.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
-find ./ -name "cascade.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
-find ./ -name "dark.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
-
-# 修改ttyd为免密
-install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" "package/base-files/files/etc/uci-defaults/99_ttyd-nopass"
-install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" "package/base-files/files/etc/uci-defaults/99_set_argon_primary"
-install -Dm755 "${GITHUB_WORKSPACE}/scripts/99-distfeeds.conf" "package/emortal/default-settings/files/99-distfeeds.conf"
-# sed -i "/define Package\/default-settings\/install/a\\ \\t\$(INSTALL_DIR) \$(1)/etc\\n\ \t\$(INSTALL_DATA) ./files/99-distfeeds.conf \$(1)/etc/99-distfeeds.conf\n" "package/emortal/default-settings/Makefile"
-# sed -i "/exit 0/i\\ [ -f \'/etc/99-distfeeds.conf\' ] && mv \'/etc/99-distfeeds.conf\' \'/etc/opkg/distfeeds.conf\'\n\ sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" "package/emortal/default-settings/files/99-default-settings"
-
-# 解决 dropbear 配置的 bug
-install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
-
-# update golang
-GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
-GOLANG_BRANCH="25.x"
-if [[ -d ./feeds/packages/lang/golang ]]; then
-    rm -rf ./feeds/packages/lang/golang
-    git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
+# 移除特定补丁 (如果存在)
+PATCH_FILE="./target/linux/qualcommax/patches-6.12/0083-v6.11-arm64-dts-qcom-ipq6018-add-sdhci-node.patch"
+if [ -f "$PATCH_FILE" ]; then
+    echo ">>> 移除冲突补丁: $PATCH_FILE"
+    rm "$PATCH_FILE"
 fi
+
+# 修复 getifaddr.c 返回值问题 (常见编译错误)
+find ./ -name "getifaddr.c" -exec sed -i 's/return 1;/return 0;/g' {} \;
+
+# 清理 profile 中的 zsh 引用 (如果没装 zsh 会报错)
+sed -i '/\/usr\/bin\/zsh/d' package/base-files/files/etc/profile
+
+# 修改 Argon/Proton 主题颜色 (自定义蓝色为青色 #31A1A1)
+echo ">>> 修改主题配色..."
+for file_pattern in "cascade.css" "dark.css" "cascade.less" "dark.less"; do
+    find ./ -name "$file_pattern" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
+done
+
+# --------------------------------------------------------
+# 7. 注入自定义脚本 (CI/CD 环境检查)
+# --------------------------------------------------------
+if [ -n "${GITHUB_WORKSPACE}" ]; then
+    echo ">>> 注入 CI/CD 自定义脚本..."
+    
+    # 创建目录
+    mkdir -p package/base-files/files/etc/uci-defaults/
+    mkdir -p package/emortal/default-settings/files/ 2>/dev/null || true
+
+    # 注入脚本
+    [ -f "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" ] && \
+      install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" "package/base-files/files/etc/uci-defaults/99_ttyd-nopass"
+    
+    [ -f "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" ] && \
+      install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_set_argon_primary.sh" "package/base-files/files/etc/uci-defaults/99_set_argon_primary"
+    
+    [ -f "${GITHUB_WORKSPACE}/scripts/99-distfeeds.conf" ] && \
+      install -Dm755 "${GITHUB_WORKSPACE}/scripts/99-distfeeds.conf" "package/emortal/default-settings/files/99-distfeeds.conf"
+    
+    [ -f "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" ] && \
+      install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
+else
+    echo "⚠️ 提示: 本地编译环境，跳过 GITHUB_WORKSPACE 脚本注入。"
+fi
+
+# --------------------------------------------------------
+# 8. 更新 Go 语言版本 (关键依赖)
+# --------------------------------------------------------
+GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
+GOLANG_BRANCH="25.x" # 使用最新的 Go 25.x 分支以支持新特性
+
+if [ -d "./feeds/packages/lang/golang" ]; then
+    echo ">>> 更新 Go 语言环境到 $GOLANG_BRANCH ..."
+    rm -rf ./feeds/packages/lang/golang
+    if git clone --depth=1 --single-branch --branch "$GOLANG_BRANCH" "$GOLANG_REPO" ./feeds/packages/lang/golang; then
+        echo "✅ Go 语言更新成功"
+    else
+        echo "❌ Go 语言更新失败，将使用默认版本"
+    fi
+fi
+
+echo ">>> DIY 脚本执行完毕！准备更新 feeds..."
