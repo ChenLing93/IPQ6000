@@ -130,6 +130,12 @@ jobs:
           echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
           echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
 
+      - name: Compile OpenWrt(错误日志输出)
+        run: |
+          make -j1 V=s 2>&1 | tail -n 200 > error_log.txt
+          cat error_log.txt
+          grep -i "error" error_log.txt && exit 1 || exit 0
+
       - name: Check Space Usage(检查空间使用情况)
         if: (!cancelled())
         run: df -hT
