@@ -86,7 +86,49 @@ UPDATE_PACKAGE() {
 # --------------------------------------------------------
 # 3. 下载第三方插件
 # --------------------------------------------------------
+# 1. 下载 luci-lib-taskd (必须)
+# 来源：ImmortalWrt (最稳定，与大多数 OpenWrt 版本兼容)
+if [ ! -d "package/luci-lib-taskd" ]; then
+    git clone --depth=1 --single-branch --branch master https://github.com/immortalwrt/luci.git temp_luci_taskd
+    if [ -d "temp_luci_taskd/libs/luci-lib-taskd" ]; then
+        mv temp_luci_taskd/libs/luci-lib-taskd package/
+        echo "✅ 成功下载 luci-lib-taskd"
+    fi
+    rm -rf temp_luci_taskd
+fi
 
+# 2. 下载 luci-lib-xterm (iStore 通常需要)
+if [ ! -d "package/luci-lib-xterm" ]; then
+    git clone --depth=1 --single-branch --branch master https://github.com/immortalwrt/luci.git temp_luci_xterm
+    if [ -d "temp_luci_xterm/libs/luci-lib-xterm" ]; then
+        mv temp_luci_xterm/libs/luci-lib-xterm package/
+        echo "✅ 成功下载 luci-lib-xterm"
+    fi
+    rm -rf temp_luci_xterm
+fi
+
+# 3. 下载 luci-app-store (主程序)
+# 来源：Linkease 官方
+if [ ! -d "package/luci-app-store" ]; then
+    # 先清理可能存在的旧版本
+    rm -rf package/luci-app-store package/istore package/app-store-ui
+    git clone --depth=1 --single-branch --branch main https://github.com/linkease/istore.git temp_istore
+    
+    # istore 仓库结构：istore 是主程序，app-store-ui 是界面
+    if [ -d "temp_istore/luci-app-store" ]; then
+        mv temp_istore/luci-app-store package/
+    fi
+    if [ -d "temp_istore/app-store-ui" ]; then
+        mv temp_istore/app-store-ui package/
+    fi
+    # 有时候 istore 仓库根目录直接就是 luci-app-store，做二次检查
+    if [ -f "temp_istore/Makefile" ] && [ -z "$(ls -A package/luci-app-store 2>/dev/null)" ]; then
+         mv temp_istore package/luci-app-store
+    fi
+    
+    rm -rf temp_istore
+    echo "✅ 成功下载 luci-app-store"
+fi
 # --- 独立插件 ---
 UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master"
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
@@ -157,7 +199,6 @@ provided_config_lines=(
     #"CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-ddnsto=y"
     "CONFIG_PACKAGE_luci-i18n-ddnsto-zh-cn=y"
-    "CONFIG_PACKAGE_luci-app-store=y"
     "CONFIG_PACKAGE_luci-theme-proton=y"
     "CONFIG_PACKAGE_luci-app-argon-config=y"
     "CONFIG_PACKAGE_nano=y"
@@ -175,6 +216,11 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-openclash=y"
     "CONFIG_PACKAGE_luci-app-autotimeset=y" 
     "CONFIG_PACKAGE_luci-i18n-autotimeset-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-store=y"
+    "CONFIG_PACKAGE_luci-lib-taskd=y"       # <--- 关键：强制编译 taskd 库
+    "CONFIG_PACKAGE_luci-lib-xterm=y"       # <--- 关键：强制编译 xterm 库
+    "CONFIG_PACKAGE_app-store-ui=y"  
+    
 )
 
 # 针对 IPQ 平台开启 NSS SQM
