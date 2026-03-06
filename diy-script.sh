@@ -146,11 +146,14 @@ UPDATE_PACKAGE "frp" "ysuolmai/openwrt-frp" "main"
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
 naiveproxy shadowsocks-rust v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
 tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
-luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosbnb \
-taskd luci-lib-xterm luci-lib-taskd luci-app-ssr-plus luci-app-passwall2 \
-quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
-luci-theme-argon luci-app-argon-config netdata luci-app-netdata lucky luci-app-lucky \
-luci-app-openclash mihomo luci-app-nikki luci-app-vlmcsd vlmcsd" "kenzok8/small-package" "main" "pkg"
+mihomo v2dat \
+luci-app-passwall smartdns luci-app-smartdns \
+taskd luci-lib-xterm luci-lib-taskd \
+luci-app-istorex luci-app-cloudflarespeedtest \
+luci-theme-argon luci-app-argon-config \
+netdata luci-app-netdata lucky luci-app-lucky \
+luci-app-vlmcsd vlmcsd \
+quickstart luci-app-quickstart" "kenzok8/small-package" "main" "pkg"
 
 # --- sbwml 专用源提取 ---
 UPDATE_PACKAGE "luci-app-netspeedtest speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
