@@ -148,7 +148,7 @@ naiveproxy shadowsocks-rust v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin 
 tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
 mihomo v2dat \
 luci-app-passwall smartdns luci-app-smartdns \
-taskd luci-lib-xterm luci-lib-taskd \
+luci-lib-xterm \
 luci-app-istorex luci-app-cloudflarespeedtest \
 luci-theme-argon luci-app-argon-config \
 netdata luci-app-netdata lucky luci-app-lucky \
