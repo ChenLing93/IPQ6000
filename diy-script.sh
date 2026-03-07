@@ -132,7 +132,7 @@ fi
 # --- 独立插件 ---
 UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master"
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
-UPDATE_PACKAGE "openwrt-gecoosac" "lwb1978/openwrt-gecoosac" "main"
+UPDATE_PACKAGE "openwrt-gecoosac" "ChenLing93/luci-app-gecoosac" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 UPDATE_PACKAGE "luci-app-ddnsto" "linkease/ddnsto-openwrt" "main"
 UPDATE_PACKAGE "luci-app-store" "linkease/istore" "main" # iStore
