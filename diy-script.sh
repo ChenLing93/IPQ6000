@@ -83,11 +83,6 @@ UPDATE_PACKAGE() {
     esac
 }
 
-# --------------------------------------------------------
-# 3. 下载第三方插件
-# --------------------------------------------------------
-# 1. 下载 luci-lib-taskd (必须)
-# 来源：ImmortalWrt (最稳定，与大多数 OpenWrt 版本兼容)
 if [ ! -d "package/luci-lib-taskd" ]; then
     git clone --depth=1 --single-branch --branch master https://github.com/immortalwrt/luci.git temp_luci_taskd
     if [ -d "temp_luci_taskd/libs/luci-lib-taskd" ]; then
@@ -97,7 +92,7 @@ if [ ! -d "package/luci-lib-taskd" ]; then
     rm -rf temp_luci_taskd
 fi
 
-# 2. 下载 luci-lib-xterm (iStore 通常需要)
+# 2. 下载 luci-lib-xterm
 if [ ! -d "package/luci-lib-xterm" ]; then
     git clone --depth=1 --single-branch --branch master https://github.com/immortalwrt/luci.git temp_luci_xterm
     if [ -d "temp_luci_xterm/libs/luci-lib-xterm" ]; then
@@ -107,22 +102,19 @@ if [ ! -d "package/luci-lib-xterm" ]; then
     rm -rf temp_luci_xterm
 fi
 
-# 3. 下载 luci-app-store (主程序)
-# 来源：Linkease 官方
+# 3. 下载 luci-app-store (iStore)
 if [ ! -d "package/luci-app-store" ]; then
-    # 先清理可能存在的旧版本
-    rm -rf package/luci-app-store package/istore package/app-store-ui
+    rm -rf package/luci-app-store package/istore package/app-store-ui temp_istore
     git clone --depth=1 --single-branch --branch main https://github.com/linkease/istore.git temp_istore
     
-    # istore 仓库结构：istore 是主程序，app-store-ui 是界面
     if [ -d "temp_istore/luci-app-store" ]; then
         mv temp_istore/luci-app-store package/
     fi
     if [ -d "temp_istore/app-store-ui" ]; then
         mv temp_istore/app-store-ui package/
     fi
-    # 有时候 istore 仓库根目录直接就是 luci-app-store，做二次检查
-    if [ -f "temp_istore/Makefile" ] && [ -z "$(ls -A package/luci-app-store 2>/dev/null)" ]; then
+    # 兼容旧结构
+    if [ -f "temp_istore/Makefile" ] && [ ! -d "package/luci-app-store" ]; then
          mv temp_istore package/luci-app-store
     fi
     
@@ -220,6 +212,18 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-lib-taskd=y"       # <--- 关键：强制编译 taskd 库
     "CONFIG_PACKAGE_luci-lib-xterm=y"       # <--- 关键：强制编译 xterm 库
     "CONFIG_PACKAGE_app-store-ui=y"  
+
+
+
+    "CONFIG_PACKAGE_kmod-usb-core=y"
+    "CONFIG_PACKAGE_kmod-usb-dwc3=y"
+    "CONFIG_PACKAGE_kmod-usb-dwc3-qcom=y"
+    "CONFIG_PACKAGE_kmod-usb-storage-uas=y"
+    "CONFIG_PACKAGE_kmod-fs-exfat=y"
+    "CONFIG_PACKAGE_kmod-fs-ntfs3=y"
+    "CONFIG_PACKAGE_block-mount=y"
+    "CONFIG_PACKAGE_fdisk=y"
+    "CONFIG_PACKAGE_lsblk=y"
     
 )
 
