@@ -120,7 +120,7 @@ if [ ! -d "package/luci-app-store" ]; then
 fi
 
 # --- 调用 UPDATE_PACKAGE 函数 ---
-UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "main"
+UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master"
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
 UPDATE_PACKAGE "openwrt-gecoosac" "ChenLing93/luci-app-gecoosac" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
@@ -128,7 +128,7 @@ UPDATE_PACKAGE "luci-app-ddnsto" "linkease/ddnsto-openwrt" "main"
 UPDATE_PACKAGE "luci-theme-proton" "sirpdboy/luci-theme-proton" "main"
 UPDATE_PACKAGE "luci-app-quickfile" "sbwml/luci-app-quickfile" "main"
 UPDATE_PACKAGE "openwrt-podman" "breeze303/openwrt-podman" "main"
-UPDATE_PACKAGE "frp" "ysuolmai/openwrt-frp" "master"
+UPDATE_PACKAGE "frp" "ysuolmai/openwrt-frp" "main"
 
 # --- 大仓库提取 (small-package) ---
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
@@ -141,7 +141,7 @@ luci-app-istorex luci-app-cloudflarespeedtest \
 luci-theme-argon luci-app-argon-config \
 netdata luci-app-netdata lucky luci-app-lucky \
 luci-app-vlmcsd vlmcsd \
-quickstart luci-app-quickstart" "kenzok8/openwrt-packages" "master" "pkg"
+quickstart luci-app-quickstart" "kenzok8/small-package" "main" "pkg"
 
 # --- sbwml 专用源提取 ---
 UPDATE_PACKAGE "luci-app-netspeedtest speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
@@ -226,11 +226,11 @@ provided_config_lines=(
     "# CONFIG_PACKAGE_wpad-basic is not set"
     "# CONFIG_PACKAGE_iw is not set"
     "# CONFIG_PACKAGE_iwinfo is not set"
-    "# CONFIG_PACKAGE_hostapd is not set"
-    "# CONFIG_PACKAGE_wpad is not set"
-    "# CONFIG_PACKAGE_wpad-full-openssl is not set"
-    "# CONFIG_PACKAGE_iw is not set"
-    "# CONFIG_PACKAGE_iwinfo is not set"
+    "CONFIG_PACKAGE_hostapd=n"
+    "CONFIG_PACKAGE_wpad=n"
+    "CONFIG_PACKAGE_wpad-full-openssl=n"
+    "CONFIG_PACKAGE_iw=n"
+    "CONFIG_PACKAGE_iwinfo=n"
 )
 
 # 针对 IPQ 平台开启 NSS SQM
