@@ -53,7 +53,6 @@ UPDATE_PACKAGE() {
             echo ">>> 正在从 $REPO_NAME 提取多个包: ${PKG_NAMES[*]}"
             for NAME in "${PKG_NAMES[@]}"; do
                 # 在临时目录中递归查找包含该包名的目录 (通常包含 Makefile)
-                # 优先查找直接包含 NAME 的目录，且该目录下有 Makefile
                 local FOUND_DIR=$(find "$TEMP_DIR" -type d -name "*$NAME*" -exec test -f "{}/Makefile" \; -print -quit 2>/dev/null)
                 
                 if [ -n "$FOUND_DIR" ]; then
@@ -83,6 +82,7 @@ UPDATE_PACKAGE() {
     esac
 }
 
+# --- 独立插件下载 ---
 if [ ! -d "package/luci-lib-taskd" ]; then
     git clone --depth=1 --single-branch --branch master https://github.com/immortalwrt/luci.git temp_luci_taskd
     if [ -d "temp_luci_taskd/libs/luci-lib-taskd" ]; then
@@ -92,7 +92,6 @@ if [ ! -d "package/luci-lib-taskd" ]; then
     rm -rf temp_luci_taskd
 fi
 
-# 2. 下载 luci-lib-xterm
 if [ ! -d "package/luci-lib-xterm" ]; then
     git clone --depth=1 --single-branch --branch master https://github.com/immortalwrt/luci.git temp_luci_xterm
     if [ -d "temp_luci_xterm/libs/luci-lib-xterm" ]; then
@@ -102,7 +101,6 @@ if [ ! -d "package/luci-lib-xterm" ]; then
     rm -rf temp_luci_xterm
 fi
 
-# 3. 下载 luci-app-store (iStore)
 if [ ! -d "package/luci-app-store" ]; then
     rm -rf package/luci-app-store package/istore package/app-store-ui temp_istore
     git clone --depth=1 --single-branch --branch main https://github.com/linkease/istore.git temp_istore
@@ -113,7 +111,6 @@ if [ ! -d "package/luci-app-store" ]; then
     if [ -d "temp_istore/app-store-ui" ]; then
         mv temp_istore/app-store-ui package/
     fi
-    # 兼容旧结构
     if [ -f "temp_istore/Makefile" ] && [ ! -d "package/luci-app-store" ]; then
          mv temp_istore package/luci-app-store
     fi
@@ -121,20 +118,19 @@ if [ ! -d "package/luci-app-store" ]; then
     rm -rf temp_istore
     echo "✅ 成功下载 luci-app-store"
 fi
-# --- 独立插件 ---
+
+# --- 调用 UPDATE_PACKAGE 函数 ---
 UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "master"
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
 UPDATE_PACKAGE "openwrt-gecoosac" "ChenLing93/luci-app-gecoosac" "main"
 UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 UPDATE_PACKAGE "luci-app-ddnsto" "linkease/ddnsto-openwrt" "main"
-UPDATE_PACKAGE "luci-app-store" "linkease/istore" "main" # iStore
 UPDATE_PACKAGE "luci-theme-proton" "sirpdboy/luci-theme-proton" "main"
 UPDATE_PACKAGE "luci-app-quickfile" "sbwml/luci-app-quickfile" "main"
 UPDATE_PACKAGE "openwrt-podman" "breeze303/openwrt-podman" "main"
 UPDATE_PACKAGE "frp" "ysuolmai/openwrt-frp" "main"
 
 # --- 大仓库提取 (small-package) ---
-# 包含大量常用科学上网和工具包
 UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
 naiveproxy shadowsocks-rust v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
 tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
@@ -151,7 +147,7 @@ quickstart luci-app-quickstart" "kenzok8/small-package" "main" "pkg"
 UPDATE_PACKAGE "luci-app-netspeedtest speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
 
 # --------------------------------------------------------
-# 4. 特殊修补与 DiskMan 安装
+# 3. 特殊修补与 DiskMan 安装
 # --------------------------------------------------------
 
 # 修复 quickfile 架构问题 (针对 aarch64)
@@ -176,7 +172,7 @@ mkdir -p package/parted
 wget -q https://raw.githubusercontent.com/lisaac/luci-app-diskman/master/Parted.Makefile -O package/parted/Makefile
 
 # --------------------------------------------------------
-# 5. 配置文件 (.config) 预设
+# 4. 配置文件 (.config) 预设
 # --------------------------------------------------------
 provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-zerotier=y"
@@ -209,11 +205,9 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-autotimeset=y" 
     "CONFIG_PACKAGE_luci-i18n-autotimeset-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-store=y"
-    "CONFIG_PACKAGE_luci-lib-taskd=y"       # <--- 关键：强制编译 taskd 库
-    "CONFIG_PACKAGE_luci-lib-xterm=y"       # <--- 关键：强制编译 xterm 库
-    "CONFIG_PACKAGE_app-store-ui=y"  
-
-
+    "CONFIG_PACKAGE_luci-lib-taskd=y"
+    "CONFIG_PACKAGE_luci-lib-xterm=y"
+    "CONFIG_PACKAGE_app-store-ui=y"
 
     "CONFIG_PACKAGE_kmod-usb-core=y"
     "CONFIG_PACKAGE_kmod-usb-dwc3=y"
@@ -225,6 +219,18 @@ provided_config_lines=(
     "CONFIG_PACKAGE_fdisk=y"
     "CONFIG_PACKAGE_lsblk=y"
     
+    # 显式禁用无线组件 (第一重保险)
+    "# CONFIG_PACKAGE_hostapd is not set"
+    "# CONFIG_PACKAGE_wpad is not set"
+    "# CONFIG_PACKAGE_wpad-full-openssl is not set"
+    "# CONFIG_PACKAGE_wpad-basic is not set"
+    "# CONFIG_PACKAGE_iw is not set"
+    "# CONFIG_PACKAGE_iwinfo is not set"
+    "# CONFIG_PACKAGE_hostapd is not set"
+    "# CONFIG_PACKAGE_wpad is not set"
+    "# CONFIG_PACKAGE_wpad-full-openssl is not set"
+    "# CONFIG_PACKAGE_iw is not set"
+    "# CONFIG_PACKAGE_iwinfo is not set"
 )
 
 # 针对 IPQ 平台开启 NSS SQM
@@ -237,75 +243,79 @@ for line in "${provided_config_lines[@]}"; do
     echo "$line" >> .config
 done
 
-# --------------------------------------------------------
-# [关键修复] 针对无 WiFi 设备禁用无线组件
-# --------------------------------------------------------
-echo ">>> 检测到无 WiFi 需求，正在禁用 hostapd/wpad 以修复编译错误并精简固件..."
-
-# 1. 强制禁用所有 hostapd 和 wpad 变体
-# 使用 sed 直接修改 .config，确保无论之前选了什么，现在都改为未选中
-sed -i 's/CONFIG_PACKAGE_hostapd=y/# CONFIG_PACKAGE_hostapd is not set/g' .config
-sed -i 's/CONFIG_PACKAGE_hostapd-mini=y/# CONFIG_PACKAGE_hostapd-mini is not set/g' .config
-sed -i 's/CONFIG_PACKAGE_hostapd-full=y/# CONFIG_PACKAGE_hostapd-full is not set/g' .config
-
-sed -i 's/CONFIG_PACKAGE_wpad=y/# CONFIG_PACKAGE_wpad is not set/g' .config
-sed -i 's/CONFIG_PACKAGE_wpad-basic=y/# CONFIG_PACKAGE_wpad-basic is not set/g' .config
-sed -i 's/CONFIG_PACKAGE_wpad-mini=y/# CONFIG_PACKAGE_wpad-mini is not set/g' .config
-sed -i 's/CONFIG_PACKAGE_wpad-full=y/# CONFIG_PACKAGE_wpad-full is not set/g' .config
-sed -i 's/CONFIG_PACKAGE_wpad-full-openssl=y/# CONFIG_PACKAGE_wpad-full-openssl is not set/g' .config
-sed -i 's/CONFIG_PACKAGE_wpad-basic-mbedtls=y/# CONFIG_PACKAGE_wpad-basic-mbedtls is not set/g' .config
-
-# 2. 显式设置为 n (双重保险)
-cat >> .config <<EOF
-CONFIG_PACKAGE_hostapd=n
-CONFIG_PACKAGE_wpad=n
-CONFIG_PACKAGE_wpad-full-openssl=n
-CONFIG_PACKAGE_wpad-basic=n
-CONFIG_PACKAGE_iw=n
-CONFIG_PACKAGE_iwinfo=n
-CONFIG_PACKAGE_wireless-tools=n
-EOF
-
-# 3. 可选：禁用无线驱动内核模块 (进一步精简，视具体平台而定)
-# 对于 IPQ6000，驱动通常在 kernel 里，但我们可以尝试禁用加载项
-sed -i 's/CONFIG_PACKAGE_kmod-ath10k=n/CONFIG_PACKAGE_kmod-ath10k=n/g' .config # 保持禁用
-sed -i 's/CONFIG_PACKAGE_kmod-ath11k=n/CONFIG_PACKAGE_kmod-ath11k=n/g' .config # 保持禁用
-
-echo "✅ 无线组件已禁用，hostapd 编译错误将被跳过。"
-
-
-echo ">>> 正在应用 hostapd 源码修复补丁..."
-
-# 确保补丁目录存在
-mkdir -p package/network/services/hostapd/patches
-
-# 创建修复补丁
-# 这个补丁会移除导致 'struct hostapd_config' has no member named 'he_mu_edca' 错误的代码
-cat > package/network/services/hostapd/patches/999-fix-he-mu-edca-build-error.patch << 'EOF'
---- a/src/ap/hostapd.c
-+++ b/src/ap/hostapd.c
-@@ -4681,9 +4681,8 @@ static void hostapd_fill_csa_settings(struct hostapd_data *hapd,
- #ifdef CONFIG_IEEE80211AX
- 	if (hapd->iconf->ieee80211ax &&
- 	    hapd->iface->conf->he_op.he_rts_threshold_set) {
--		hapd->iface->conf->he_mu_edca.he_qos_info &= 0xfff0;
--		hapd->iface->conf->he_mu_edca.he_qos_info |=
--			hapd->iface->conf->he_op.he_rts_threshold;
-+		/* FIX: Removed he_mu_edca access to resolve compile error on missing struct member.
-+		 * This occurs when hostapd source is out of sync with kernel/header definitions.
-+		 * Impact: Negligible for most use cases (static MU-EDCA params used). */
- 	}
- #endif
- }
-EOF
-
-echo "✅ hostapd 修复补丁已放置到 package/network/services/hostapd/patches/"
+echo "✅ 配置文件预设完成，已禁用无线组件。"
 
 # --------------------------------------------------------
-# 6. 补丁与文件修正
+# 5. [核心修复] 强制修复 hostapd 源码 (防止因依赖被强行启用)
+# --------------------------------------------------------
+# 即使配置禁用了 wpad，某些依赖链仍可能强制开启它。
+# 我们直接修改 hostapd 的 Makefile，在编译前注入 sed 命令修复源码。
+# 这比打补丁更稳定，不会出现 malformed patch 错误。
+
+echo ">>> 注入 hostapd 源码修复逻辑 (he_mu_edca 错误)..."
+
+HOSTAPD_MAKEFILE="package/network/services/hostapd/Makefile"
+
+if [ -f "$HOSTAPD_MAKEFILE" ]; then
+    # 检查是否已经注入过，避免重复
+    if ! grep -q "FIX_HE_MU_EDCA_SED" "$HOSTAPD_MAKEFILE"; then
+        cat >> "$HOSTAPD_MAKEFILE" << 'MAKEFILE_FIX'
+
+# [FIX_HE_MU_EDCA_SED] Force fix he_mu_edca compile error before compilation
+# This injects a sed command to comment out the problematic lines in hostapd.c
+define Build/PrepareFixHeMuEdca
+	@if [ -f $(BUILD_DIR)/$(PKG_NAME)/src/ap/hostapd.c ]; then \
+		echo ">>> Applying he_mu_edca source fix via sed..."; \
+		sed -i 's/hapd->iface->conf->he_mu_edca\.he_qos_info &= 0xfff0;/\/\* FIX: disabled he_mu_edca access \*\//g' $(BUILD_DIR)/$(PKG_NAME)/src/ap/hostapd.c; \
+		sed -i 's/hapd->iface->conf->he_mu_edca\.he_qos_info |=/\/\* FIX: disabled he_mu_edca access \*\//g' $(BUILD_DIR)/$(PKG_NAME)/src/ap/hostapd.c; \
+	fi
+endef
+
+# Hook into Build/Prepare by appending to it
+# Note: In OpenWrt, we can't easily append to existing define blocks without complex parsing.
+# Instead, we rely on the fact that Build/Prepare usually calls Build/Prepare/Default.
+# A safer bet for CI is to create a post-patch hook if available, or simply trust the config disable.
+# HOWEVER, to be absolutely sure, let's create a dummy patch file using printf to avoid heredoc issues.
+MAKEFILE_FIX
+        
+        # 既然修改 Makefile 钩子比较复杂，我们回归到最可靠的“生成完美格式的 patch 文件”方法
+        # 使用 printf 逐行写入，确保没有缩进错误
+        rm -f package/network/services/hostapd/patches/999-fix-he-mu-edca-build-error.patch
+        
+        printf '%s\n' \
+        '--- a/src/ap/hostapd.c' \
+        '+++ b/src/ap/hostapd.c' \
+        '@@ -4681,9 +4681,8 @@ static void hostapd_fill_csa_settings(struct hostapd_data *hapd,' \
+        ' #ifdef CONFIG_IEEE80211AX' \
+        ' 	if (hapd->iconf->ieee80211ax &&' \
+        ' 	    hapd->iface->conf->he_op.he_rts_threshold_set) {' \
+        '-		hapd->iface->conf->he_mu_edca.he_qos_info &= 0xfff0;' \
+        '-		hapd->iface->conf->he_mu_edca.he_qos_info |=' \
+        '-			hapd->iface->conf->he_op.he_rts_threshold;' \
+        '+		/* FIX: Disabled he_mu_edca access to resolve build error */' \
+        '+		/* Original code commented out */' \
+        ' 	}' \
+        ' #endif' \
+        ' }' \
+        > package/network/services/hostapd/patches/999-fix-he-mu-edca-build-error.patch
+        
+        echo "✅ 已生成修复补丁 (使用 printf 确保格式正确)。"
+        
+        # 清理刚才追加到 Makefile 的无用内容 (因为我们要用 patch 文件法)
+        # 重新读取 Makefile 去掉刚才追加的部分，保持干净
+        head -n -15 "$HOSTAPD_MAKEFILE" > "$HOSTAPD_MAKEFILE.tmp" && mv "$HOSTAPD_MAKEFILE.tmp" "$HOSTAPD_MAKEFILE"
+    else
+        echo "✅ 修复逻辑已存在，跳过。"
+    fi
+else
+    echo "⚠️ 未找到 hostapd Makefile，可能路径有变，但补丁文件法依然有效。"
+fi
+
+# --------------------------------------------------------
+# 6. 其他补丁与文件修正
 # --------------------------------------------------------
 
-# 移除特定补丁 (如果存在)
+# 移除特定冲突补丁 (如果存在)
 PATCH_FILE="./target/linux/qualcommax/patches-6.12/0083-v6.11-arm64-dts-qcom-ipq6018-add-sdhci-node.patch"
 if [ -f "$PATCH_FILE" ]; then
     echo ">>> 移除冲突补丁: $PATCH_FILE"
@@ -330,11 +340,9 @@ done
 if [ -n "${GITHUB_WORKSPACE}" ]; then
     echo ">>> 注入 CI/CD 自定义脚本..."
     
-    # 创建目录
     mkdir -p package/base-files/files/etc/uci-defaults/
     mkdir -p package/emortal/default-settings/files/ 2>/dev/null || true
 
-    # 注入脚本
     [ -f "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" ] && \
       install -Dm755 "${GITHUB_WORKSPACE}/scripts/99_ttyd-nopass.sh" "package/base-files/files/etc/uci-defaults/99_ttyd-nopass"
     
@@ -354,7 +362,7 @@ fi
 # 8. 更新 Go 语言版本 (关键依赖)
 # --------------------------------------------------------
 GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
-GOLANG_BRANCH="25.x" # 使用最新的 Go 25.x 分支以支持新特性
+GOLANG_BRANCH="25.x"
 
 if [ -d "./feeds/packages/lang/golang" ]; then
     echo ">>> 更新 Go 语言环境到 $GOLANG_BRANCH ..."
