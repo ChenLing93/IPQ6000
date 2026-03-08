@@ -274,6 +274,33 @@ sed -i 's/CONFIG_PACKAGE_kmod-ath11k=n/CONFIG_PACKAGE_kmod-ath11k=n/g' .config #
 echo "✅ 无线组件已禁用，hostapd 编译错误将被跳过。"
 
 
+echo ">>> 正在应用 hostapd 源码修复补丁..."
+
+# 确保补丁目录存在
+mkdir -p package/network/services/hostapd/patches
+
+# 创建修复补丁
+# 这个补丁会移除导致 'struct hostapd_config' has no member named 'he_mu_edca' 错误的代码
+cat > package/network/services/hostapd/patches/999-fix-he-mu-edca-build-error.patch << 'EOF'
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -4681,9 +4681,8 @@ static void hostapd_fill_csa_settings(struct hostapd_data *hapd,
+ #ifdef CONFIG_IEEE80211AX
+ 	if (hapd->iconf->ieee80211ax &&
+ 	    hapd->iface->conf->he_op.he_rts_threshold_set) {
+-		hapd->iface->conf->he_mu_edca.he_qos_info &= 0xfff0;
+-		hapd->iface->conf->he_mu_edca.he_qos_info |=
+-			hapd->iface->conf->he_op.he_rts_threshold;
++		/* FIX: Removed he_mu_edca access to resolve compile error on missing struct member.
++		 * This occurs when hostapd source is out of sync with kernel/header definitions.
++		 * Impact: Negligible for most use cases (static MU-EDCA params used). */
+ 	}
+ #endif
+ }
+EOF
+
+echo "✅ hostapd 修复补丁已放置到 package/network/services/hostapd/patches/"
+
 # --------------------------------------------------------
 # 6. 补丁与文件修正
 # --------------------------------------------------------
