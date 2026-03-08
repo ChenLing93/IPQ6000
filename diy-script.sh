@@ -238,6 +238,43 @@ for line in "${provided_config_lines[@]}"; do
 done
 
 # --------------------------------------------------------
+# [关键修复] 针对无 WiFi 设备禁用无线组件
+# --------------------------------------------------------
+echo ">>> 检测到无 WiFi 需求，正在禁用 hostapd/wpad 以修复编译错误并精简固件..."
+
+# 1. 强制禁用所有 hostapd 和 wpad 变体
+# 使用 sed 直接修改 .config，确保无论之前选了什么，现在都改为未选中
+sed -i 's/CONFIG_PACKAGE_hostapd=y/# CONFIG_PACKAGE_hostapd is not set/g' .config
+sed -i 's/CONFIG_PACKAGE_hostapd-mini=y/# CONFIG_PACKAGE_hostapd-mini is not set/g' .config
+sed -i 's/CONFIG_PACKAGE_hostapd-full=y/# CONFIG_PACKAGE_hostapd-full is not set/g' .config
+
+sed -i 's/CONFIG_PACKAGE_wpad=y/# CONFIG_PACKAGE_wpad is not set/g' .config
+sed -i 's/CONFIG_PACKAGE_wpad-basic=y/# CONFIG_PACKAGE_wpad-basic is not set/g' .config
+sed -i 's/CONFIG_PACKAGE_wpad-mini=y/# CONFIG_PACKAGE_wpad-mini is not set/g' .config
+sed -i 's/CONFIG_PACKAGE_wpad-full=y/# CONFIG_PACKAGE_wpad-full is not set/g' .config
+sed -i 's/CONFIG_PACKAGE_wpad-full-openssl=y/# CONFIG_PACKAGE_wpad-full-openssl is not set/g' .config
+sed -i 's/CONFIG_PACKAGE_wpad-basic-mbedtls=y/# CONFIG_PACKAGE_wpad-basic-mbedtls is not set/g' .config
+
+# 2. 显式设置为 n (双重保险)
+cat >> .config <<EOF
+CONFIG_PACKAGE_hostapd=n
+CONFIG_PACKAGE_wpad=n
+CONFIG_PACKAGE_wpad-full-openssl=n
+CONFIG_PACKAGE_wpad-basic=n
+CONFIG_PACKAGE_iw=n
+CONFIG_PACKAGE_iwinfo=n
+CONFIG_PACKAGE_wireless-tools=n
+EOF
+
+# 3. 可选：禁用无线驱动内核模块 (进一步精简，视具体平台而定)
+# 对于 IPQ6000，驱动通常在 kernel 里，但我们可以尝试禁用加载项
+sed -i 's/CONFIG_PACKAGE_kmod-ath10k=n/CONFIG_PACKAGE_kmod-ath10k=n/g' .config # 保持禁用
+sed -i 's/CONFIG_PACKAGE_kmod-ath11k=n/CONFIG_PACKAGE_kmod-ath11k=n/g' .config # 保持禁用
+
+echo "✅ 无线组件已禁用，hostapd 编译错误将被跳过。"
+
+
+# --------------------------------------------------------
 # 6. 补丁与文件修正
 # --------------------------------------------------------
 
