@@ -119,6 +119,15 @@ jobs:
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
 
+      - name: Fix default-settings Makefile
+        run: |
+          cd openwrt
+
+          cp package/emortal/default-settings/Makefile package/emortal/default-settings/Makefile.bak
+          sed -i '45s/^[[:space:]]\+/\t/' package/emortal/default-settings/Makefile
+         # sed -i '45s/^[[:space:]]*$//' package/emortal/default-settings/Makefile
+
+
       - name: Compile Firmware(开始编译固件)
         id: compile
         run: |
